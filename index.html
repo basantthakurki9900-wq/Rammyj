@@ -621,7 +621,7 @@
         };
       }, []);
 
-      // ZapUPI Payment Callbacks
+      // ===== ZapUPI Payment Callbacks (RESTORED) =====
       useEffect(() => {
         ZapUPI.setPaymentCallbacks({
           onSuccess: function(orderId) {
@@ -690,35 +690,6 @@
             }
           }
         );
-      };
-
-      const simulateDeposit = (amt) => {
-        setProcessingPayment(true);
-        setTimeout(() => {
-          const newBalance = (user.balance || 0) + amt;
-          const newWd = (user.withdrawableBalance || 0) + amt;
-          const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { 
-            amount: amt, 
-            time: new Date().toLocaleString(), 
-            ts: Date.now(),
-            desc: 'In-Game Deposit' 
-          }];
-          
-          onUpdateUser({ 
-            balance: newBalance, 
-            withdrawableBalance: newWd, 
-            depositHistory: newHistory.slice(-20) 
-          });
-          
-          setShowDepositOverlay(false);
-          setIsTimerRunning(false);
-          setProcessingPayment(false);
-          if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-          }
-          alert(`₹${amt} सफलतापूर्वक जमा हुए!`);
-        }, 2000);
       };
 
       // ===== Firebase सेटअप =====
@@ -1601,7 +1572,7 @@
 
       const showToast = (msg) => { setToast({ msg }); setTimeout(() => setToast(null), 2500); };
 
-      // ZapUPI Payment Callbacks
+      // ===== ZapUPI Payment Callbacks (RESTORED) =====
       useEffect(() => {
         ZapUPI.setPaymentCallbacks({
           onSuccess: function(orderId) {
