@@ -1706,20 +1706,21 @@
               try {
                 const snapshot = await window.db.ref('tp_users').once('value');
                 const allUsers = snapshot.val() || {};
-                const referrer = Object.values(allUsers).find(u => u.referralCode === refCode);
+                // ⭐ FIX: सही तरीके से रेफरल कोड चेक करें
+                const referrer = Object.values(allUsers).find(u => u.referralCode && u.referralCode === refCode);
                 if (referrer) {
                   referredByCode = refCode;
                   referrerFound = true;
                 }
               } catch (e) {
-                const localReferrer = Object.values(localUsers).find(u => u.referralCode === refCode);
+                const localReferrer = Object.values(localUsers).find(u => u.referralCode && u.referralCode === refCode);
                 if (localReferrer) {
                   referredByCode = refCode;
                   referrerFound = true;
                 }
               }
             } else {
-              const localReferrer = Object.values(localUsers).find(u => u.referralCode === refCode);
+              const localReferrer = Object.values(localUsers).find(u => u.referralCode && u.referralCode === refCode);
               if (localReferrer) {
                 referredByCode = refCode;
                 referrerFound = true;
@@ -1732,16 +1733,16 @@
             showColorfulToast("रेफरल कोड लागू हुआ! पहले ₹100 डिपॉजिट करें तभी रेफरर को बोनस मिलेगा।", 'success');
           }
           
-          // ⭐ FIX: Signup पर सिर्फ ₹50 बोनस मिलेगा, कोई Pro Version नहीं
+          // Signup पर ₹50 बोनस
           const newUser = { 
             id: newId, 
             name, 
             mobile, 
             password: pass, 
             avatar: '🧑', 
-            balance: 50, // ₹50 बोनस
+            balance: 50,
             withdrawableBalance: 0,
-            bonusBalance: 0, // अब bonusBalance 0, सारा balance में
+            bonusBalance: 0,
             referralCode: genRef(name), 
             wins: 0, 
             losses: 0, 
@@ -1762,7 +1763,6 @@
             referralEarnings: 0, 
             isOnline: false, 
             isPlaying: false,
-            // Pro Version हटा दिया
             isDepositBonus: false,
             hasDepositedAfter250: false,
             deviceId: deviceId
@@ -1890,7 +1890,6 @@
             </div>
           </div>
 
-          {/* ⭐ PRO VERSION हटा दिया गया */}
           <div className="bg-gradient-to-r from-yellow-500 to-yellow-700 text-slate-900 p-4 rounded-2xl mb-6 flex justify-between items-center shadow-xl">
             <div>
               <div className="text-xs font-medium opacity-80">कुल बैलेंस</div>
@@ -1954,9 +1953,7 @@
           onSuccess: function(orderId) {
             const amt = parseInt(localStorage.getItem('tp_pending_amt') || '0');
             if (!isNaN(amt) && amt > 0) {
-              // ⭐ FIX: डिपॉजिट पर सिर्फ amt जुड़ेगा, कोई बोनस नहीं
               let newBalance = user.balance + amt;
-              // डिपॉजिट करने पर withdrawableBalance नहीं बढ़ेगा
               let newWd = user.withdrawableBalance;
               const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { 
                 amount: amt, 
@@ -1974,9 +1971,7 @@
                 hasDepositedAfter250: amt >= 100 ? true : (user.hasDepositedAfter250 || false)
               };
 
-              // ⭐ Pro Version पूरी तरह हटा दिया - कोई Pro Version नहीं, कोई बोनस ट्रांसफर नहीं
-
-              // Referral Bonus - पहले जैसा ही
+              // ⭐ रेफरल बोनस - withdrawableBalance नहीं बढ़ेगा, सिर्फ balance और referralEarnings
               if (!user.isReferralBonusClaimed && user.referredBy && amt >= 100) {
                 updates.isReferralBonusClaimed = true;
                 let referrerCredited = false;
@@ -1990,10 +1985,11 @@
                       if (referrerId) {
                         const referrer = allUsers[referrerId];
                         const refBonus = 50;
+                        // ⭐ FIX: withdrawableBalance नहीं बढ़ेगा
                         const refUpdates = {
                           referralEarnings: (referrer.referralEarnings || 0) + refBonus,
                           balance: (referrer.balance || 0) + refBonus,
-                          withdrawableBalance: (referrer.withdrawableBalance || 0) + refBonus,
+                          // withdrawableBalance नहीं बढ़ेगा
                           referralCount: (referrer.referralCount || 0) + 1
                         };
                         window.db.ref('tp_users/' + referrerId).update(refUpdates);
@@ -2020,7 +2016,7 @@
                     const refUpdates = {
                       referralEarnings: (referrer.referralEarnings || 0) + refBonus,
                       balance: (referrer.balance || 0) + refBonus,
-                      withdrawableBalance: (referrer.withdrawableBalance || 0) + refBonus,
+                      // withdrawableBalance नहीं बढ़ेगा
                       referralCount: (referrer.referralCount || 0) + 1
                     };
                     saveUserToDB(referrerId, refUpdates); 
@@ -2096,7 +2092,6 @@
           {toast && ( <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 pointer-events-none"><div className="bg-slate-800 border-2 border-green-500 px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center toast-pop max-w-[90%]"><div className="text-6xl text-green-500 mb-3">✅</div><div className="text-white font-bold text-base text-center">{toast.msg}</div></div></div> )}
           <div className="flex items-center mb-6"><button onClick={onBack} className="mr-4 text-yellow-400 text-2xl">←</button><h2 className="text-xl font-bold">मेरा वॉलेट</h2></div>
           
-          {/* ⭐ PRO VERSION हटा दिया गया */}
           <div className="bg-slate-800 p-6 rounded-2xl mb-6 text-center border border-white/10 shadow-xl">
             <div className="text-gray-400 text-sm">कुल बैलेंस</div>
             <div className="text-4xl font-bold text-green-500 mt-2">₹ {user.balance.toLocaleString('en-IN')}</div>
@@ -2453,11 +2448,12 @@
             <h3 className="font-bold text-yellow-400 mb-3">👥 मेरे रेफरल्स:</h3>
             <div className="space-y-2 max-h-60 overflow-y-auto no-scrollbar">
               {referredUsers.length > 0 ? referredUsers.map((u, i) => {
+                // ⭐ FIX: सही तरीके से डिपॉजिट चेक करें
                 const totalDep = (u.depositHistory || []).reduce((sum, d) => {
-                  if (d.desc === 'Signup Bonus' || d.desc === 'Promo Code' || d.desc === 'Auto Bonus') return sum;
+                  if (d.desc === 'Signup Bonus' || d.desc === 'Promo Code' || d.desc === 'Auto Bonus' || d.desc === 'Admin Added') return sum;
                   return sum + (parseInt(d.amount) || 0);
                 }, 0);
-                const hasDeposited = totalDep >= 100 || u.isReferralBonusClaimed;
+                const hasDeposited = totalDep >= 100;
 
                 return (
                   <div key={i} className="bg-slate-900 p-3 rounded-lg flex justify-between items-center text-sm border border-white/5">
@@ -2466,7 +2462,7 @@
                       <div className="text-[10px] text-gray-500">{u.mobile}</div>
                     </div>
                     <div className={`text-[10px] px-2 py-1 rounded ${hasDeposited ? 'bg-green-600 text-white' : 'bg-yellow-500 text-black'}`}>
-                      {hasDeposited ? '₹100 डिपॉजिट हो गया' : '₹100 डिपॉजिट बाकी'}
+                      {hasDeposited ? '✅ ₹100 डिपॉजिट हो गया' : '⏳ ₹100 डिपॉजिट बाकी'}
                     </div>
                   </div>
                 );
@@ -2485,4 +2481,4 @@
     }
   </script>
 </body>
-  </html>
+</html>
