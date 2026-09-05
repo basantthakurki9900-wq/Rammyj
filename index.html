@@ -1732,16 +1732,16 @@
             showColorfulToast("रेफरल कोड लागू हुआ! पहले ₹100 डिपॉजिट करें तभी रेफरर को बोनस मिलेगा।", 'success');
           }
           
+          // ⭐ FIX: Signup पर सिर्फ ₹50 बोनस मिलेगा, कोई Pro Version नहीं
           const newUser = { 
             id: newId, 
             name, 
             mobile, 
             password: pass, 
             avatar: '🧑', 
-            balance: 50,
+            balance: 50, // ₹50 बोनस
             withdrawableBalance: 0,
-            bonusBalance: 50,
-            isBonusUser: true,
+            bonusBalance: 0, // अब bonusBalance 0, सारा balance में
             referralCode: genRef(name), 
             wins: 0, 
             losses: 0, 
@@ -1762,7 +1762,7 @@
             referralEarnings: 0, 
             isOnline: false, 
             isPlaying: false,
-            isProVersion: false,
+            // Pro Version हटा दिया
             isDepositBonus: false,
             hasDepositedAfter250: false,
             deviceId: deviceId
@@ -1890,13 +1890,11 @@
             </div>
           </div>
 
+          {/* ⭐ PRO VERSION हटा दिया गया */}
           <div className="bg-gradient-to-r from-yellow-500 to-yellow-700 text-slate-900 p-4 rounded-2xl mb-6 flex justify-between items-center shadow-xl">
             <div>
               <div className="text-xs font-medium opacity-80">कुल बैलेंस</div>
               <div className="text-3xl font-extrabold">₹ {user.balance.toLocaleString('en-IN')}</div>
-              {user.isProVersion && (
-                <div className="text-[10px] font-bold text-blue-700 mt-1">⭐ प्रो वर्जन</div>
-              )}
               {user.balance >= 250 && !user.hasDepositedAfter250 && (
                 <div className="text-[10px] font-bold text-red-500 mt-1">⚠️ ₹250+! डिपॉजिट करें</div>
               )}
@@ -1956,6 +1954,7 @@
           onSuccess: function(orderId) {
             const amt = parseInt(localStorage.getItem('tp_pending_amt') || '0');
             if (!isNaN(amt) && amt > 0) {
+              // ⭐ FIX: डिपॉजिट पर सिर्फ amt जुड़ेगा, कोई बोनस नहीं
               let newBalance = user.balance + amt;
               // डिपॉजिट करने पर withdrawableBalance नहीं बढ़ेगा
               let newWd = user.withdrawableBalance;
@@ -1975,14 +1974,9 @@
                 hasDepositedAfter250: amt >= 100 ? true : (user.hasDepositedAfter250 || false)
               };
 
-              if (amt >= 100 && user.isBonusUser) {
-                updates.isProVersion = true;
-                updates.isBonusUser = false;
-                const bonusAmount = user.bonusBalance || 0;
-                updates.balance = newBalance + bonusAmount;
-                updates.bonusBalance = 0;
-              }
+              // ⭐ Pro Version पूरी तरह हटा दिया - कोई Pro Version नहीं, कोई बोनस ट्रांसफर नहीं
 
+              // Referral Bonus - पहले जैसा ही
               if (!user.isReferralBonusClaimed && user.referredBy && amt >= 100) {
                 updates.isReferralBonusClaimed = true;
                 let referrerCredited = false;
@@ -2102,12 +2096,10 @@
           {toast && ( <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 pointer-events-none"><div className="bg-slate-800 border-2 border-green-500 px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center toast-pop max-w-[90%]"><div className="text-6xl text-green-500 mb-3">✅</div><div className="text-white font-bold text-base text-center">{toast.msg}</div></div></div> )}
           <div className="flex items-center mb-6"><button onClick={onBack} className="mr-4 text-yellow-400 text-2xl">←</button><h2 className="text-xl font-bold">मेरा वॉलेट</h2></div>
           
+          {/* ⭐ PRO VERSION हटा दिया गया */}
           <div className="bg-slate-800 p-6 rounded-2xl mb-6 text-center border border-white/10 shadow-xl">
             <div className="text-gray-400 text-sm">कुल बैलेंस</div>
             <div className="text-4xl font-bold text-green-500 mt-2">₹ {user.balance.toLocaleString('en-IN')}</div>
-            {user.isProVersion && (
-              <div className="text-blue-400 text-sm font-bold mt-1">⭐ प्रो वर्जन</div>
-            )}
           </div>
           
           <div className="flex gap-2 mb-4 bg-slate-800 p-1 rounded-xl"><button onClick={() => setTab('deposit')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'deposit' ? 'bg-green-700 text-white' : 'text-gray-400'}`}>डिपॉजिट</button><button onClick={() => setTab('withdraw')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'withdraw' ? 'bg-red-700 text-white' : 'text-gray-400'}`}>विड्रॉल</button></div>
@@ -2493,4 +2485,4 @@
     }
   </script>
 </body>
-</html>
+  </html>
