@@ -780,7 +780,6 @@
           onSuccess: function(orderId) {
             const amt = parseInt(localStorage.getItem('tp_pending_amt') || '0');
             if (!isNaN(amt) && amt > 0) {
-              // ✅ यूजर का बैलेंस बढ़ाएं (सिर्फ डिपॉजिट राशि)
               const newBalance = (user.balance || 0) + amt;
               const newWd = (user.withdrawableBalance || 0);
               const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { 
@@ -804,7 +803,6 @@
                 hasDepositedAfter250: hasDepositedAfter250
               });
               
-              // ✅ रेफरल बोनस - सिर्फ ₹50 रेफरर को दें
               if (!user.isReferralBonusClaimed && user.referredBy && amt >= 100) {
                 const allUsers = getUsers();
                 const referrerId = Object.keys(allUsers).find(id => allUsers[id].referralCode === user.referredBy);
@@ -823,7 +821,6 @@
                     localStorage.setItem('tp_users', JSON.stringify(localUsers));
                   }
                 }
-                // यूजर का isReferralBonusClaimed सेट करें
                 onUpdateUser({ isReferralBonusClaimed: true });
               }
               
@@ -1907,14 +1904,14 @@
             </div>
             <div className="bg-slate-800 p-3 rounded-xl border border-purple-500/30 text-center">
               <div className="text-xs text-gray-400">रेफरल कमाई</div>
-              <div className="text-2xl font-bold text-purple-400">₹${user.referralEarnings || 0}</div>
+              <div className="text-2xl font-bold text-purple-400">₹{user.referralEarnings || 0}</div>
             </div>
           </div>
 
           <div className="bg-gradient-to-r from-yellow-500 to-yellow-700 text-slate-900 p-4 rounded-2xl mb-6 flex justify-between items-center shadow-xl">
             <div>
               <div className="text-xs font-medium opacity-80">कुल बैलेंस</div>
-              <div className="text-3xl font-extrabold">₹ ${user.balance.toLocaleString('en-IN')}</div>
+              <div className="text-3xl font-extrabold">₹ {user.balance.toLocaleString('en-IN')}</div>
               {user.balance >= 250 && !user.hasDepositedAfter250 && (
                 <div className="text-[10px] font-bold text-red-500 mt-1">⚠️ ₹250+! डिपॉजिट करें</div>
               )}
@@ -1974,7 +1971,6 @@
           onSuccess: function(orderId) {
             const amt = parseInt(localStorage.getItem('tp_pending_amt') || '0');
             if (!isNaN(amt) && amt > 0) {
-              // ✅ यूजर का बैलेंस बढ़ाएं (सिर्फ डिपॉजिट राशि)
               let newBalance = user.balance + amt;
               let newWd = user.withdrawableBalance;
               const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { 
@@ -1993,7 +1989,6 @@
                 hasDepositedAfter250: amt >= 100 ? true : (user.hasDepositedAfter250 || false)
               };
 
-              // ✅ रेफरल बोनस - सिर्फ ₹50 रेफरर को दें
               if (!user.isReferralBonusClaimed && user.referredBy && amt >= 100) {
                 updates.isReferralBonusClaimed = true;
                 const allUsers = getUsers();
@@ -2088,7 +2083,7 @@
           
           <div className="bg-slate-800 p-6 rounded-2xl mb-6 text-center border border-white/10 shadow-xl">
             <div className="text-gray-400 text-sm">कुल बैलेंस</div>
-            <div className="text-4xl font-bold text-green-500 mt-2">₹ ${user.balance.toLocaleString('en-IN')}</div>
+            <div className="text-4xl font-bold text-green-500 mt-2">₹ {user.balance.toLocaleString('en-IN')}</div>
           </div>
           
           <div className="flex gap-2 mb-4 bg-slate-800 p-1 rounded-xl"><button onClick={() => setTab('deposit')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'deposit' ? 'bg-green-700 text-white' : 'text-gray-400'}`}>डिपॉजिट</button><button onClick={() => setTab('withdraw')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'withdraw' ? 'bg-red-700 text-white' : 'text-gray-400'}`}>विड्रॉल</button></div>
@@ -2436,7 +2431,7 @@
             </a>
             <button onClick={copyToClipboard} className="w-full py-3 bg-white text-purple-700 font-bold rounded-xl active:scale-95">लिंक कॉपी करें</button>
           </div>
-          <div className="bg-slate-800 p-4 rounded-xl mb-4 text-sm border border-white/5"><div className="flex justify-between border-b border-white/10 pb-2 mb-2"><span>आपकी यूनिक आईडी:</span><span className="font-mono text-yellow-500">{user.id}</span></div><div className="flex justify-between border-b border-white/10 pb-2 mb-2"><span>रेफरल कोड:</span><span className="font-mono text-yellow-500">{user.referralCode}</span></div><div className="flex justify-between"><span>कुल रेफरल कमाई:</span><span className="font-bold text-green-500">₹${user.referralEarnings || 0}</span></div></div>
+          <div className="bg-slate-800 p-4 rounded-xl mb-4 text-sm border border-white/5"><div className="flex justify-between border-b border-white/10 pb-2 mb-2"><span>आपकी यूनिक आईडी:</span><span className="font-mono text-yellow-500">{user.id}</span></div><div className="flex justify-between border-b border-white/10 pb-2 mb-2"><span>रेफरल कोड:</span><span className="font-mono text-yellow-500">{user.referralCode}</span></div><div className="flex justify-between"><span>कुल रेफरल कमाई:</span><span className="font-bold text-green-500">₹{user.referralEarnings || 0}</span></div></div>
           
           <div className="bg-slate-800 p-4 rounded-xl mb-4 flex-grow">
             <h3 className="font-bold text-yellow-400 mb-3">👥 मेरे रेफरल्स:</h3>
@@ -2474,4 +2469,4 @@
     }
   </script>
 </body>
-</html>
+  </html>
