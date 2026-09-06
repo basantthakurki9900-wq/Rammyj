@@ -119,16 +119,29 @@
       }, duration);
     }
 
-    // ============= Device ID Check for Blocking =============
+    // ============= Device ID Check for Blocking (FIXED) =============
     function getDeviceId() {
       try {
         let deviceId = localStorage.getItem('tp_device_id');
         if (!deviceId) {
+          // Generate a permanent device ID
           deviceId = 'DEV_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
           localStorage.setItem('tp_device_id', deviceId);
         }
         return deviceId;
       } catch(e) { return 'DEV_' + Date.now(); }
+    }
+
+    // ============= CHECK IF DEVICE IS BLOCKED (ONLY FOR SIGNUP) =============
+    function isDeviceBlockedForSignup(deviceId) {
+      try {
+        const users = getUsers();
+        const deviceUsers = Object.values(users).filter(u => u.deviceId === deviceId);
+        // Only block if there are 2 or MORE users on same device AND they are NOT the same user
+        // Also check if any existing user with same device is NOT blocked (meaning they are active)
+        const nonBlockedDeviceUsers = deviceUsers.filter(u => !u.isBlocked);
+        return nonBlockedDeviceUsers.length >= 2;
+      } catch(e) { return false; }
     }
 
     // ============= BOT NAMES =============
@@ -1632,36 +1645,17 @@
       );
     }
 
-    // ============= AUTH SCREEN =============
+    // ============= AUTH SCREEN (FIXED) =============
     function AuthScreen({ onSignup }) {
       const [name, setName] = useState(''); const [mobile, setMobile] = useState(''); const [pass, setPass] = useState(''); const [isLogin, setIsLogin] = useState(true); const [refCode, setRefCode] = useState('');
       const [isBlocked, setIsBlocked] = useState(false);
       
-      useEffect(() => {
-        try {
-          const params = new URLSearchParams(window.location.search);
-          const ref = params.get('ref');
-          if (ref) setRefCode(ref.toUpperCase());
-        } catch(e) {}
-        
-        const deviceId = getDeviceId();
-        const users = getUsers();
-        const deviceUsers = Object.values(users).filter(u => u.deviceId === deviceId);
-        if (deviceUsers.length >= 2) {
-          setIsBlocked(true);
-          deviceUsers.forEach(u => {
-            saveUserToDB(u.id, { isBlocked: true });
-          });
-        }
-      }, []);
+      // Only check device blocking on signup, NOT on login
+      // This fixes the auto-block issue
 
       const handleAuth = async () => {
-        if (isBlocked) {
-          showColorfulToast("यह गलत है - इस डिवाइस से एक से ज्यादा आईडी बनाना मना है!", 'error');
-          return;
-        }
-        
         if (isLogin) {
+          // LOGIN - No device blocking check here!
           if (!mobile || !pass) return showColorfulToast("मोबाइल और पासवर्ड दर्ज करें", 'warning');
           const users = getUsers();
           let foundUser = Object.values(users).find(u => u.mobile === mobile && u.password === pass);
@@ -1676,14 +1670,7 @@
           
           if (foundUser) { 
             if (foundUser.isBlocked) {
-              showColorfulToast("यह गलत है - आपका अकाउंट ब्लॉक है!", 'error');
-              return;
-            }
-            const deviceId = getDeviceId();
-            const allUsers = getUsers();
-            const deviceUsers = Object.values(allUsers).filter(u => u.deviceId === deviceId);
-            if (deviceUsers.length >= 2 && !deviceUsers.some(u => u.id === foundUser.id)) {
-              showColorfulToast("यह गलत है - इस डिवाइस से एक से ज्यादा आईडी बनाना मना है!", 'error');
+              showColorfulToast("🚫 यह गलत है - आपका अकाउंट ब्लॉक है! एडमिन से संपर्क करें।", 'error');
               return;
             }
             localStorage.setItem('tp_logged_in', JSON.stringify(foundUser)); 
@@ -1691,16 +1678,18 @@
           }
           else { showColorfulToast("गलत मोबाइल या पासवर्ड", 'error'); }
         } else {
+          // SIGNUP - Device blocking check here only
           if (!name || !mobile || !pass) return showColorfulToast("सभी फील्ड भरें", 'warning');
           if (mobile.length !== 10) return showColorfulToast("मोबाइल नंबर 10 अंकों का होना चाहिए", 'warning');
           
           const localUsers = getUsers();
           const deviceId = getDeviceId();
           
-          const deviceUsers = Object.values(localUsers).filter(u => u.deviceId === deviceId);
-          if (deviceUsers.length >= 1) {
+          // Check if device already has 2 or more users (BLOCK)
+          const deviceUsers = Object.values(localUsers).filter(u => u.deviceId === deviceId && !u.isBlocked);
+          if (deviceUsers.length >= 2) {
             setIsBlocked(true);
-            showColorfulToast("यह गलत है - इस डिवाइस से एक से ज्यादा आईडी बनाना मना है!", 'error');
+            showColorfulToast("🚫 यह गलत है - इस डिवाइस से एक से ज्यादा आईडी बनाना मना है!", 'error');
             return;
           }
           
