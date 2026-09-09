@@ -14,7 +14,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <!-- ZapUPI Script -->
   <script src="https://zapupi.com/single-html-web-kit.js"></script>
   <script>
     try {
@@ -30,6 +29,7 @@
       if (typeof firebase !== 'undefined') {
         firebase.initializeApp(firebaseConfig);
         window.db = firebase.database();
+        console.log("🔥 Firebase Connected");
       } else { window.db = null; }
     } catch (e) { console.error("Firebase init error:", e); window.db = null; }
   </script>
@@ -80,7 +80,44 @@
     .toast-warning { background: linear-gradient(135deg, #713f12, #a16207); border: 2px solid #fbbf24; }
     .toast-info { background: linear-gradient(135deg, #1e3a5f, #1d4ed8); border: 2px solid #60a5ba; }
     .toast-deposit { background: linear-gradient(135deg, #4c1d95, #7c3aed); border: 2px solid #a78bfa; }
+
+    .balance-update {
+      animation: balancePulse 0.6s ease-in-out;
+    }
+    @keyframes balancePulse {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.15); color: #4ade80; }
+      70% { transform: scale(1.05); color: #fbbf24; }
+      100% { transform: scale(1); color: #22c55e; }
+    }
+    
     .blocked-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; color: white; text-align: center; }
+
+    /* ===== DEPOSIT PAGE - STABLE ===== */
+    .deposit-container {
+      position: relative;
+      min-height: 100%;
+    }
+    .deposit-container .content-wrapper {
+      transition: none !important;
+    }
+    .deposit-container .amount-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .deposit-container .btn-deposit {
+      transition: none !important;
+    }
+    .deposit-container .btn-deposit:active {
+      transform: scale(0.97);
+    }
+    .deposit-container .deposit-amount-btn {
+      transition: none !important;
+    }
+    .deposit-container .deposit-amount-btn:active {
+      transform: scale(0.95);
+    }
   </style>
 </head>
 <body>
@@ -91,7 +128,7 @@
     const SUIT_COLOR = { "♠": "#1c1c1c", "♣": "#1c1c1c", "♥": "#dc2626", "♦": "#dc2626" };
     const RANK_LABEL = { 11: "J", 12: "Q", 13: "K", 14: "A" };
     
-    const UPI_ID = "royalcasino@upi"; // Admin UPI ID (अब इसका उपयोग नहीं होगा, ZapUPI के लिए रखा हुआ है)
+    const UPI_ID = "royalcasino@upi";
 
     // ============= ZapUPI Global Setup =============
     window.handleZapSuccess = null;
@@ -649,8 +686,6 @@
       const [depositTimer, setDepositTimer] = useState(300);
       const [isTimerRunning, setIsTimerRunning] = useState(false);
       const [selectedDepositAmount, setSelectedDepositAmount] = useState(100);
-      const [utrNumber, setUtrNumber] = useState('');
-      const [showUtrInput, setShowUtrInput] = useState(false);
       const [processingPayment, setProcessingPayment] = useState(false);
       const timerIntervalRef = useRef(null);
       const [forceHardLoss, setForceHardLoss] = useState(false);
@@ -754,55 +789,12 @@
         };
       }, []);
 
-      const submitUtr = () => {
-        if (!utrNumber || utrNumber.length < 10) {
-          return showColorfulToast('कृपया सही 12 अंकों का UTR दर्ज करें', 'warning');
-        }
-        
-        const amt = selectedDepositAmount;
-        const txId = 'DEP' + Date.now();
-        const newTx = { 
-            amount: amt, 
-            time: new Date().toLocaleString(), 
-            ts: Date.now(), 
-            status: "Pending", 
-            utr: utrNumber, 
-            desc: 'UPI Deposit (UTR)' 
-        };
-        
-        const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), newTx];
-        
-        onUpdateUser({ depositHistory: newHistory.slice(-20) });
-        
-        if (window.db) {
-            window.db.ref('tp_pending_deposits/' + txId).set({
-                userId: user.id,
-                userName: user.name,
-                amount: amt,
-                utr: utrNumber,
-                timestamp: Date.now(),
-                status: "Pending"
-            });
-        }
-        
-        showColorfulToast('डिपॉजिट अनुरोध सफलतापूर्वक सबमिट हुआ! ✅ एडमिन अप्रूव करेंगे।', 'success');
-        setUtrNumber('');
-        setShowUtrInput(false);
-        setProcessingPayment(false);
-        setShowDepositOverlay(false);
-        setIsTimerRunning(false);
-        if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-        }
-      };
-
+      // ===== ONLY AUTOMATIC DEPOSIT - NO UTR =====
       const handleDeposit = () => {
         const amt = selectedDepositAmount;
         if (!amt || amt <= 0) return showColorfulToast('कृपया एक राशि चुनें', 'warning');
         setProcessingPayment(true);
 
-        // ZapUPI Integration
         window.handleZapSuccess = (orderId) => {
           const newTx = {
               amount: amt,
@@ -831,12 +823,12 @@
         };
 
         window.handleZapFailed = (orderId) => {
-          showColorfulToast('पेमेंट विफल रहा।', 'error');
+          showColorfulToast('पेमेंट विफल रहा। कृपया पुनः प्रयास करें।', 'error');
           setProcessingPayment(false);
         };
 
         window.handleZapTimeout = (orderId) => {
-          showColorfulToast('पेमेंट टाइमआउट।', 'warning');
+          showColorfulToast('पेमेंट टाइमआउट। कृपया पुनः प्रयास करें।', 'warning');
           setProcessingPayment(false);
         };
 
@@ -852,7 +844,7 @@
               ZapUPI.loadPayment(paymentUrl);
             },
             onError: function(err) {
-              showColorfulToast("Order Error: " + err, 'error');
+              showColorfulToast("पेमेंट गेटवे में समस्या: " + err, 'error');
               setProcessingPayment(false);
             }
           }
@@ -1247,90 +1239,53 @@
           {showDepositOverlay && (
             <div className="deposit-overlay">
               <div className="text-center max-w-sm w-full">
-                {!showUtrInput ? (
-                  <>
-                    <div className="text-6xl mb-4">⚠️</div>
-                    <h2 className="text-2xl font-bold text-yellow-400 mb-2">
-                      {user.balance >= 250 && !user.hasDepositedAfter250 ? '₹250+ बैलेंस! डिपॉजिट अनिवार्य' : (user.balance <= 0 ? '💰 बैलेंस खत्म!' : '⚠️ पैसे नहीं हैं!')}
-                    </h2>
-                    <p className="text-gray-300 text-sm mb-4">
-                      {user.balance >= 250 && !user.hasDepositedAfter250 
-                        ? 'आपका बैलेंस ₹250 से ज्यादा हो गया है। कृपया ₹100 डिपॉजिट करें तभी आप गेम खेल सकते हैं।'
-                        : 'आपके पास चाल चलने के लिए पर्याप्त पैसे नहीं हैं। कृपया डिपॉजिट करें।'}
-                    </p>
-                    
-                    <div className="flex justify-center mb-6">
-                      <div className="timer-ring">
-                        <div className="inner"></div>
-                        <span>{formatTime(depositTimer)}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="text-sm text-gray-400 mb-2">डिपॉजिट राशि चुनें:</div>
-                    <div className="grid grid-cols-3 gap-2 mb-4">
-                      {quickAmounts.slice(0, 6).map(amt => (
-                        <button 
-                          key={amt} 
-                          onClick={() => setSelectedDepositAmount(amt)}
-                          className={`deposit-amount-btn ${selectedDepositAmount === amt ? 'selected' : ''}`}
-                        >
-                          ₹{amt}
-                        </button>
-                      ))}
-                    </div>
-                    
+                <div className="text-6xl mb-4">⚠️</div>
+                <h2 className="text-2xl font-bold text-yellow-400 mb-2">
+                  {user.balance >= 250 && !user.hasDepositedAfter250 ? '₹250+ बैलेंस! डिपॉजिट अनिवार्य' : (user.balance <= 0 ? '💰 बैलेंस खत्म!' : '⚠️ पैसे नहीं हैं!')}
+                </h2>
+                <p className="text-gray-300 text-sm mb-4">
+                  {user.balance >= 250 && !user.hasDepositedAfter250 
+                    ? 'आपका बैलेंस ₹250 से ज्यादा हो गया है। कृपया ₹100 डिपॉजिट करें तभी आप गेम खेल सकते हैं।'
+                    : 'आपके पास चाल चलने के लिए पर्याप्त पैसे नहीं हैं। कृपया डिपॉजिट करें।'}
+                </p>
+                
+                <div className="flex justify-center mb-6">
+                  <div className="timer-ring">
+                    <div className="inner"></div>
+                    <span>{formatTime(depositTimer)}</span>
+                  </div>
+                </div>
+                
+                <div className="text-sm text-gray-400 mb-2">डिपॉजिट राशि चुनें:</div>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {quickAmounts.slice(0, 6).map(amt => (
                     <button 
-                      onClick={handleDeposit} 
-                      disabled={processingPayment}
-                      className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2 disabled:opacity-50"
+                      key={amt} 
+                      onClick={() => setSelectedDepositAmount(amt)}
+                      className={`deposit-amount-btn ${selectedDepositAmount === amt ? 'selected' : ''}`}
                     >
-                      {processingPayment ? "प्रोसेसिंग..." : `💰 ₹${selectedDepositAmount} डिपॉजिट करें`}
+                      ₹{amt}
                     </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-6xl mb-4">💳</div>
-                    <h2 className="text-2xl font-bold text-yellow-400 mb-4">₹{selectedDepositAmount} का पेमेंट करें</h2>
-                    
-                    <div className="bg-slate-800 p-4 rounded-xl mb-4 border border-yellow-500/30">
-                      <div className="text-xs text-gray-400 mb-1">यहाँ भेजें (UPI ID):</div>
-                      <div className="text-lg font-mono font-bold text-green-400 flex justify-between items-center">
-                        <span>{UPI_ID}</span>
-                        <button onClick={() => { navigator.clipboard.writeText(UPI_ID); showColorfulToast('UPI ID कॉपी हो गई! 📋', 'success'); }} className="text-xs bg-green-700 px-2 py-1 rounded">कॉपी</button>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-800 p-4 rounded-xl mb-4 border border-white/10 text-left">
-                      <div className="text-sm text-gray-300 mb-2 font-bold">⚠️ निर्देश:</div>
-                      <ul className="text-xs text-gray-400 list-disc pl-4 space-y-1 mb-3">
-                        <li>उपरोक्त UPI ID पर ₹{selectedDepositAmount} भेजें।</li>
-                        <li>पेमेंट के बाद अपना 12 अंकों का UTR नंबर नीचे दर्ज करें।</li>
-                        <li>एडमिन द्वारा वेरिफाई होने पर बैलेंस जुड़ जाएगा।</li>
-                      </ul>
-                      <input 
-                        type="text" 
-                        placeholder="12 अंकों का UTR दर्ज करें" 
-                        value={utrNumber} 
-                        onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, ''))} 
-                        maxLength={12}
-                        className="w-full px-4 py-3 rounded-lg bg-slate-900 border border-white/10 text-white text-center font-mono outline-none focus:border-yellow-500"
-                      />
-                    </div>
-
-                    <button 
-                      onClick={submitUtr} 
-                      className="w-full py-3 rounded-xl font-bold text-lg btn-green mb-2"
-                    >
-                      ✅ UTR सबमिट करें
-                    </button>
-                    <button 
-                      onClick={() => { setShowUtrInput(false); setProcessingPayment(false); }} 
-                      className="w-full py-2 text-gray-400 text-sm hover:text-white"
-                    >
-                      वापस
-                    </button>
-                  </>
-                )}
+                  ))}
+                </div>
+                
+                <button 
+                  onClick={handleDeposit} 
+                  disabled={processingPayment}
+                  className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2 disabled:opacity-50"
+                >
+                  {processingPayment ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      प्रोसेसिंग...
+                    </>
+                  ) : (
+                    `💰 ₹${selectedDepositAmount} डिपॉजिट करें`
+                  )}
+                </button>
                 
                 <button 
                   onClick={() => {
@@ -1424,8 +1379,6 @@
       const clickStats = useRef(safeParse(localStorage.getItem('mines_clicks'), {}));
       const [showDepositOverlay, setShowDepositOverlay] = useState(false);
       const [selectedDepositAmount, setSelectedDepositAmount] = useState(100);
-      const [utrNumber, setUtrNumber] = useState('');
-      const [showUtrInput, setShowUtrInput] = useState(false);
       const [processingPayment, setProcessingPayment] = useState(false);
       
       useEffect(() => {
@@ -1439,16 +1392,14 @@
       }, [user.balance]);
 
       const determineMinesOutcome = useCallback((currentUser) => { 
-        // Balanced Logic: User wins initially, then house edge applies
         let consecutiveWins = currentUser.minesConsecutiveWins || 0; 
         let recentLosses = currentUser.recentLosses || 0; 
 
-        if (consecutiveWins < 2) return 'win_small'; // Give first 2 wins to engage user
-        if (recentLosses >= 3) return 'win_small'; // Recovery win
+        if (consecutiveWins < 2) return 'win_small';
+        if (recentLosses >= 3) return 'win_small';
         
-        // Base House Probability
-        if (Math.random() < 0.30) return 'win_small'; // 30% chance to win
-        return 'lose'; // 70% chance to lose
+        if (Math.random() < 0.30) return 'win_small';
+        return 'lose';
       }, []);
       
       const generateGrid = (outcome) => { 
@@ -1561,47 +1512,10 @@
         setGrid(g => g.map(box => ({ ...box, state: 'revealed' }))); 
       };
       
-      const submitUtr = () => {
-        if (!utrNumber || utrNumber.length < 10) {
-          return showColorfulToast('कृपया सही 12 अंकों का UTR दर्ज करें', 'warning');
-        }
-        
-        const amt = selectedDepositAmount;
-        const txId = 'DEP' + Date.now();
-        const newTx = { 
-            amount: amt, 
-            time: new Date().toLocaleString(), 
-            ts: Date.now(), 
-            status: "Pending", 
-            utr: utrNumber, 
-            desc: 'UPI Deposit (UTR)' 
-        };
-        
-        const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), newTx];
-        onUpdateUser({ depositHistory: newHistory.slice(-20) });
-        
-        if (window.db) {
-            window.db.ref('tp_pending_deposits/' + txId).set({
-                userId: user.id,
-                userName: user.name,
-                amount: amt,
-                utr: utrNumber,
-                timestamp: Date.now(),
-                status: "Pending"
-            });
-        }
-        
-        showColorfulToast('डिपॉजिट अनुरोध सफलतापूर्वक सबमिट हुआ! ✅ एडमिन अप्रूव करेंगे।', 'success');
-        setUtrNumber('');
-        setShowUtrInput(false);
-        setProcessingPayment(false);
-        setShowDepositOverlay(false);
-      };
-
+      // ===== ONLY AUTOMATIC DEPOSIT - NO UTR =====
       const handleDepositFromMines = () => {
         setProcessingPayment(true);
 
-        // ZapUPI Integration
         window.handleZapSuccess = (orderId) => {
           const newTx = {
               amount: selectedDepositAmount,
@@ -1625,12 +1539,12 @@
         };
 
         window.handleZapFailed = (orderId) => {
-          showColorfulToast('पेमेंट विफल रहा।', 'error');
+          showColorfulToast('पेमेंट विफल रहा। कृपया पुनः प्रयास करें।', 'error');
           setProcessingPayment(false);
         };
 
         window.handleZapTimeout = (orderId) => {
-          showColorfulToast('पेमेंट टाइमआउट।', 'warning');
+          showColorfulToast('पेमेंट टाइमआउट। कृपया पुनः प्रयास करें।', 'warning');
           setProcessingPayment(false);
         };
 
@@ -1646,7 +1560,7 @@
               ZapUPI.loadPayment(paymentUrl);
             },
             onError: function(err) {
-              showColorfulToast("Order Error: " + err, 'error');
+              showColorfulToast("पेमेंट गेटवे में समस्या: " + err, 'error');
               setProcessingPayment(false);
             }
           }
@@ -1658,78 +1572,41 @@
           {showDepositOverlay && (
             <div className="deposit-overlay">
               <div className="text-center max-w-sm w-full">
-                {!showUtrInput ? (
-                  <>
-                    <div className="text-6xl mb-4">💰</div>
-                    <h2 className="text-2xl font-bold text-yellow-400 mb-2">
-                      {user.balance <= 0 ? 'बैलेंस खत्म!' : '₹100 डिपॉजिट करें'}
-                    </h2>
-                    <p className="text-gray-300 text-sm mb-4">
-                      गेम खेलने के लिए कृपया पैसे डिपॉजिट करें।
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                      {[100, 200, 500, 1000].map(amt => (
-                        <button 
-                          key={amt} 
-                          onClick={() => setSelectedDepositAmount(amt)}
-                          className={`deposit-amount-btn ${selectedDepositAmount === amt ? 'selected' : ''}`}
-                        >
-                          ₹{amt}
-                        </button>
-                      ))}
-                    </div>
+                <div className="text-6xl mb-4">💰</div>
+                <h2 className="text-2xl font-bold text-yellow-400 mb-2">
+                  {user.balance <= 0 ? 'बैलेंस खत्म!' : '₹100 डिपॉजिट करें'}
+                </h2>
+                <p className="text-gray-300 text-sm mb-4">
+                  गेम खेलने के लिए कृपया पैसे डिपॉजिट करें।
+                </p>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {[100, 200, 500, 1000].map(amt => (
                     <button 
-                      onClick={handleDepositFromMines}
-                      disabled={processingPayment}
-                      className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2 disabled:opacity-50"
+                      key={amt} 
+                      onClick={() => setSelectedDepositAmount(amt)}
+                      className={`deposit-amount-btn ${selectedDepositAmount === amt ? 'selected' : ''}`}
                     >
-                      {processingPayment ? "प्रोसेसिंग..." : `💰 ₹${selectedDepositAmount} डिपॉजिट करें`}
+                      ₹{amt}
                     </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-6xl mb-4">💳</div>
-                    <h2 className="text-2xl font-bold text-yellow-400 mb-4">₹{selectedDepositAmount} का पेमेंट करें</h2>
-                    
-                    <div className="bg-slate-800 p-4 rounded-xl mb-4 border border-yellow-500/30">
-                      <div className="text-xs text-gray-400 mb-1">यहाँ भेजें (UPI ID):</div>
-                      <div className="text-lg font-mono font-bold text-green-400 flex justify-between items-center">
-                        <span>{UPI_ID}</span>
-                        <button onClick={() => { navigator.clipboard.writeText(UPI_ID); showColorfulToast('UPI ID कॉपी हो गई! 📋', 'success'); }} className="text-xs bg-green-700 px-2 py-1 rounded">कॉपी</button>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-800 p-4 rounded-xl mb-4 border border-white/10 text-left">
-                      <div className="text-sm text-gray-300 mb-2 font-bold">⚠️ निर्देश:</div>
-                      <ul className="text-xs text-gray-400 list-disc pl-4 space-y-1 mb-3">
-                        <li>उपरोक्त UPI ID पर ₹{selectedDepositAmount} भेजें।</li>
-                        <li>पेमेंट के बाद अपना 12 अंकों का UTR नंबर नीचे दर्ज करें।</li>
-                        <li>एडमिन द्वारा वेरिफाई होने पर बैलेंस जुड़ जाएगा।</li>
-                      </ul>
-                      <input 
-                        type="text" 
-                        placeholder="12 अंकों का UTR दर्ज करें" 
-                        value={utrNumber} 
-                        onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, ''))} 
-                        maxLength={12}
-                        className="w-full px-4 py-3 rounded-lg bg-slate-900 border border-white/10 text-white text-center font-mono outline-none focus:border-yellow-500"
-                      />
-                    </div>
-
-                    <button 
-                      onClick={submitUtr} 
-                      className="w-full py-3 rounded-xl font-bold text-lg btn-green mb-2"
-                    >
-                      ✅ UTR सबमिट करें
-                    </button>
-                    <button 
-                      onClick={() => { setShowUtrInput(false); setProcessingPayment(false); }} 
-                      className="w-full py-2 text-gray-400 text-sm hover:text-white"
-                    >
-                      वापस
-                    </button>
-                  </>
-                )}
+                  ))}
+                </div>
+                <button 
+                  onClick={handleDepositFromMines}
+                  disabled={processingPayment}
+                  className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2 disabled:opacity-50"
+                >
+                  {processingPayment ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      प्रोसेसिंग...
+                    </>
+                  ) : (
+                    `💰 ₹${selectedDepositAmount} डिपॉजिट करें`
+                  )}
+                </button>
                 <button 
                   onClick={() => { setShowDepositOverlay(false); onExit(); }} 
                   className="mt-4 text-gray-400 text-sm underline hover:text-white transition-colors"
@@ -1764,8 +1641,6 @@
           const ref = params.get('ref');
           if (ref) setRefCode(ref.toUpperCase());
         } catch(e) {}
-        
-        // Removed auto-block on mount. Admin will block from panel.
       }, []);
 
       const handleAuth = async () => {        
@@ -1798,7 +1673,6 @@
           const localUsers = getUsers();
           const deviceId = getDeviceId();
           
-          // Prevent multiple accounts from the same device (Anti-Fraud)
           const deviceUsers = Object.values(localUsers).filter(u => u.deviceId === deviceId);
           if (deviceUsers.length >= 1) {
             showColorfulToast("इस डिवाइस से पहले ही एक अकाउंट बनाया जा चुका है। एकाउंट ब्लॉक होने से बचने के लिए पुराने से लॉगिन करें।", 'warning');
@@ -1927,6 +1801,44 @@
       const isZeroBalance = user.balance <= 0; const config = getConfig(); 
       const isBlocked = user.isBlocked;
       const [onlineCount, setOnlineCount] = useState(config.fakeOnline || 0);
+      const [balanceAnim, setBalanceAnim] = useState(false);
+      
+      // ===== BALANCE UPDATE DETECTION =====
+      useEffect(() => {
+        if (!user) return;
+        
+        if (window.db && user.id) {
+          const userRef = window.db.ref('tp_users/' + user.id);
+          const handleBalanceUpdate = (snap) => {
+            const updatedUser = snap.val();
+            if (updatedUser && updatedUser.balance !== undefined) {
+              const oldBalance = user.balance || 0;
+              const newBalance = updatedUser.balance || 0;
+              
+              if (newBalance !== oldBalance) {
+                setBalanceAnim(true);
+                setTimeout(() => setBalanceAnim(false), 600);
+                
+                if (newBalance > oldBalance) {
+                  showColorfulToast(`💰 ₹${(newBalance - oldBalance).toFixed(0)} जोड़े गए! नया बैलेंस: ₹${newBalance}`, 'deposit');
+                } else if (newBalance < oldBalance) {
+                  showColorfulToast(`💸 ₹${(oldBalance - newBalance).toFixed(0)} कटे! नया बैलेंस: ₹${newBalance}`, 'warning');
+                }
+                
+                localStorage.setItem('tp_logged_in', JSON.stringify(updatedUser));
+                const allUsers = getUsers();
+                allUsers[updatedUser.id] = updatedUser;
+                localStorage.setItem('tp_users', JSON.stringify(allUsers));
+              }
+            }
+          };
+          
+          userRef.on('value', handleBalanceUpdate);
+          return () => {
+            userRef.off('value', handleBalanceUpdate);
+          };
+        }
+      }, [user.id, user.balance]);
       
       useEffect(() => {
         const fetchOnline = async () => {
@@ -2009,10 +1921,10 @@
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-yellow-500 to-yellow-700 text-slate-900 p-4 rounded-2xl mb-6 flex justify-between items-center shadow-xl">
+          <div className={`bg-gradient-to-r from-yellow-500 to-yellow-700 text-slate-900 p-4 rounded-2xl mb-6 flex justify-between items-center shadow-xl ${balanceAnim ? 'balance-update' : ''}`}>
             <div>
               <div className="text-xs font-medium opacity-80">कुल बैलेंस</div>
-              <div className="text-3xl font-extrabold">₹ {user.balance.toLocaleString('en-IN')}</div>
+              <div className="text-3xl font-extrabold" id="balanceDisplay">₹ {user.balance.toLocaleString('en-IN')}</div>
               {user.balance >= 250 && !user.hasDepositedAfter250 && (
                 <div className="text-[10px] font-bold text-red-500 mt-1">⚠️ ₹250+! डिपॉजिट करें</div>
               )}
@@ -2049,12 +1961,16 @@
 
     // ============= WALLET SCREEN =============
     function WalletScreen({ user, onBack, onUpdate }) {
-      const [amount, setAmount] = useState(''); const [tab, setTab] = useState('deposit'); const [historyTab, setHistoryTab] = useState('deposit'); const [bankDetails, setBankDetails] = useState(user.bankDetails || { bankName: '', accName: '', accNumber: '', ifsc: '' }); const [promoInput, setPromoInput] = useState(''); 
+      const [amount, setAmount] = useState(''); 
+      const [tab, setTab] = useState('deposit'); 
+      const [historyTab, setHistoryTab] = useState('deposit'); 
+      const [bankDetails, setBankDetails] = useState(user.bankDetails || { bankName: '', accName: '', accNumber: '', ifsc: '' }); 
+      const [promoInput, setPromoInput] = useState(''); 
       const [toast, setToast] = useState(null); 
       const [processingPayment, setProcessingPayment] = useState(false);
-      const [showUtrInput, setShowUtrInput] = useState(false);
-      const [utrNumber, setUtrNumber] = useState('');
-      const config = getConfig(); const banks = config.bankList || ["SBI", "HDFC", "ICICI", "Axis", "Other"]; 
+      
+      const config = getConfig(); 
+      const banks = config.bankList || ["SBI", "HDFC", "ICICI", "Axis", "Other"]; 
       const quickAmounts = (config.depositAmounts && config.depositAmounts.length > 0) ? config.depositAmounts : [100, 200, 500, 1000];
       
       const totalDeposits = (user.depositHistory || []).reduce((sum, d) => {
@@ -2067,51 +1983,12 @@
 
       const showToastLocal = (msg) => { setToast({ msg }); setTimeout(() => setToast(null), 2500); };
 
-      const submitUtr = () => {
-        if (!utrNumber || utrNumber.length < 10) {
-          return showColorfulToast('कृपया सही 12 अंकों का UTR दर्ज करें', 'warning');
-        }
-        
-        const amt = parseInt(amount);
-        if (!amt || amt <= 0) return showColorfulToast('कृपया राशि चुनें', 'warning');
-
-        const txId = 'DEP' + Date.now();
-        const newTx = { 
-            amount: amt, 
-            time: new Date().toLocaleString(), 
-            ts: Date.now(), 
-            status: "Pending", 
-            utr: utrNumber, 
-            desc: 'UPI Deposit (UTR)' 
-        };
-        
-        const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), newTx];
-        
-        onUpdate({ depositHistory: newHistory.slice(-20) });
-        
-        if (window.db) {
-            window.db.ref('tp_pending_deposits/' + txId).set({
-                userId: user.id,
-                userName: user.name,
-                amount: amt,
-                utr: utrNumber,
-                timestamp: Date.now(),
-                status: "Pending"
-            });
-        }
-        
-        showColorfulToast('डिपॉजिट अनुरोध सफलतापूर्वक सबमिट हुआ! ✅ एडमिन अप्रूव करेंगे।', 'success');
-        setUtrNumber('');
-        setShowUtrInput(false);
-        setProcessingPayment(false);
-      };
-
+      // ===== ONLY AUTOMATIC DEPOSIT - NO UTR =====
       const handleDeposit = () => {
         const amt = parseInt(amount);
         if (!amt || amt <= 0) return showColorfulToast('कृपया राशि चुनें', 'warning');
         setProcessingPayment(true);
 
-        // ZapUPI Integration
         window.handleZapSuccess = (orderId) => {
           const newTx = {
               amount: amt,
@@ -2131,16 +2008,15 @@
 
           showColorfulToast(`डिपॉजिट सफल! ✅ ₹${amt} जोड़ दिए गए।`, 'success');
           setProcessingPayment(false);
-          setShowUtrInput(false);
         };
 
         window.handleZapFailed = (orderId) => {
-          showColorfulToast('पेमेंट विफल रहा।', 'error');
+          showColorfulToast('पेमेंट विफल रहा। कृपया पुनः प्रयास करें।', 'error');
           setProcessingPayment(false);
         };
 
         window.handleZapTimeout = (orderId) => {
-          showColorfulToast('पेमेंट टाइमआउट।', 'warning');
+          showColorfulToast('पेमेंट टाइमआउट। कृपया पुनः प्रयास करें।', 'warning');
           setProcessingPayment(false);
         };
 
@@ -2156,14 +2032,20 @@
               ZapUPI.loadPayment(paymentUrl);
             },
             onError: function(err) {
-              showColorfulToast("Order Error: " + err, 'error');
+              showColorfulToast("पेमेंट गेटवे में समस्या: " + err, 'error');
               setProcessingPayment(false);
             }
           }
         );
       };
 
-      const handleSaveBank = () => { if (!bankDetails.bankName || !bankDetails.accName || !bankDetails.accNumber || !bankDetails.ifsc) return showColorfulToast("कृपया सभी बैंक विवरण भरें", 'warning'); onUpdate({ bankDetails }); showColorfulToast("बैंक डिटेल्स अपडेट हो गई!", 'success'); };
+      const handleSaveBank = () => { 
+        if (!bankDetails.bankName || !bankDetails.accName || !bankDetails.accNumber || !bankDetails.ifsc) 
+          return showColorfulToast("कृपया सभी बैंक विवरण भरें", 'warning'); 
+        onUpdate({ bankDetails }); 
+        showColorfulToast("बैंक डिटेल्स अपडेट हो गई!", 'success'); 
+      };
+      
       const handleWithdraw = () => { 
         if (!canWithdraw) return showColorfulToast("विड्रॉल के लिए पहले कम से कम ₹100 का डिपॉजिट करें और कम से कम 1 गेम खेलें!", 'warning'); 
         if (user.isBlocked) return showColorfulToast("आपका अकाउंट ब्लॉक है, विड्रॉल नहीं हो सकता।", 'error'); 
@@ -2179,73 +2061,91 @@
         showColorfulToast(`₹${amt} का विड्रॉल अनुरोध सफल! ✅`, 'success'); 
         setAmount(''); 
       };
-      const handleApplyPromo = () => { const code = promoInput.toUpperCase(); const promo = (config.promoCodes || []).find(p => p.code === code && p.isActive); if (!promo) return showColorfulToast("अमान्य या समाप्त प्रोमो कोड।", 'error'); if (user.usedPromos?.includes(code)) return showColorfulToast("आपने इस प्रोमो कोड का उपयोग पहले कर लिया है।", 'warning'); const promoAmount = parseInt(promo.amount) || 0; const newBalance = user.balance + promoAmount; const newUsedPromos = [...(Array.isArray(user.usedPromos) ? user.usedPromos : []), code]; const newDepoHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { amount: promoAmount, time: new Date().toLocaleString(), desc: 'Promo Code', status: 'Success' }]; onUpdate({ balance: newBalance, usedPromos: newUsedPromos, depositHistory: newDepoHistory.slice(-20) }); showColorfulToast(`₹${promoAmount} सफलतापूर्वक आपके अकाउंट में जोड़ दए गए हैं! 🎉`, 'success'); setPromoInput(''); };
+      
+      const handleApplyPromo = () => { 
+        const code = promoInput.toUpperCase(); 
+        const promo = (config.promoCodes || []).find(p => p.code === code && p.isActive); 
+        if (!promo) return showColorfulToast("अमान्य या समाप्त प्रोमो कोड।", 'error'); 
+        if (user.usedPromos?.includes(code)) return showColorfulToast("आपने इस प्रोमो कोड का उपयोग पहले कर लिया है।", 'warning'); 
+        const promoAmount = parseInt(promo.amount) || 0; 
+        const newBalance = user.balance + promoAmount; 
+        const newUsedPromos = [...(Array.isArray(user.usedPromos) ? user.usedPromos : []), code]; 
+        const newDepoHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), { amount: promoAmount, time: new Date().toLocaleString(), desc: 'Promo Code', status: 'Success' }]; 
+        onUpdate({ balance: newBalance, usedPromos: newUsedPromos, depositHistory: newDepoHistory.slice(-20) }); 
+        showColorfulToast(`₹${promoAmount} सफलतापूर्वक आपके अकाउंट में जोड़ दए गए हैं! 🎉`, 'success'); 
+        setPromoInput(''); 
+      };
       
       return (
-        <div className="app-wrapper bg-slate-900 text-white p-4 flex flex-col">
+        <div className="app-wrapper bg-slate-900 text-white p-4 flex flex-col deposit-container">
           {toast && ( <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 pointer-events-none"><div className="bg-slate-800 border-2 border-green-500 px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center toast-pop max-w-[90%]"><div className="text-6xl text-green-500 mb-3">✅</div><div className="text-white font-bold text-base text-center">{toast.msg}</div></div></div> )}
-          <div className="flex items-center mb-6"><button onClick={onBack} className="mr-4 text-yellow-400 text-2xl">←</button><h2 className="text-xl font-bold">मेरा वॉलेट</h2></div>
+          
+          <div className="flex items-center mb-6">
+            <button onClick={onBack} className="mr-4 text-yellow-400 text-2xl">←</button>
+            <h2 className="text-xl font-bold">मेरा वॉलेट</h2>
+          </div>
           
           <div className="bg-slate-800 p-6 rounded-2xl mb-6 text-center border border-white/10 shadow-xl">
             <div className="text-gray-400 text-sm">कुल बैलेंस</div>
             <div className="text-4xl font-bold text-green-500 mt-2">₹ {user.balance.toLocaleString('en-IN')}</div>
           </div>
           
-          <div className="flex gap-2 mb-4 bg-slate-800 p-1 rounded-xl"><button onClick={() => setTab('deposit')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'deposit' ? 'bg-green-700 text-white' : 'text-gray-400'}`}>डिपॉजिट</button><button onClick={() => setTab('withdraw')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'withdraw' ? 'bg-red-700 text-white' : 'text-gray-400'}`}>विड्रॉल</button></div>
+          <div className="flex gap-2 mb-4 bg-slate-800 p-1 rounded-xl">
+            <button onClick={() => setTab('deposit')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'deposit' ? 'bg-green-700 text-white' : 'text-gray-400'}`}>डिपॉजिट</button>
+            <button onClick={() => setTab('withdraw')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${tab === 'withdraw' ? 'bg-red-700 text-white' : 'text-gray-400'}`}>विड्रॉल</button>
+          </div>
           
           {tab === 'deposit' ? (
             <React.Fragment>
-              {!showUtrInput ? (
-                <>
-                  <div className="grid grid-cols-3 gap-2 mb-6">
-                    {quickAmounts.map(a => (
-                      <button key={a} onClick={() => setAmount(a.toString())} className={`py-3 rounded-lg text-sm border font-bold transition-transform ${amount === a.toString() ? 'bg-yellow-500 text-slate-900 border-yellow-400 scale-105 shadow-lg' : 'bg-slate-800 border-white/10 text-white active:scale-95'}`}>₹{a}</button>
-                    ))}
-                  </div>
-                  <button onClick={handleDeposit} disabled={!amount || processingPayment} className="w-full py-3 rounded-xl font-bold text-lg btn-green mb-4 disabled:opacity-50 flex justify-center items-center gap-2">
-                    {processingPayment ? "प्रोसेसिंग..." : `💰 ₹${amount || 0} डिपॉजिट करें`}
+              {/* ===== AMOUNT SELECTION - STABLE ===== */}
+              <div className="amount-grid">
+                {quickAmounts.map(a => (
+                  <button 
+                    key={a} 
+                    onClick={() => setAmount(a.toString())} 
+                    className={`py-3 rounded-lg text-sm border font-bold transition-colors ${amount === a.toString() ? 'bg-yellow-500 text-slate-900 border-yellow-400 scale-105 shadow-lg' : 'bg-slate-800 border-white/10 text-white active:scale-95'}`}
+                  >
+                    ₹{a}
                   </button>
-                </>
-              ) : (
-                <div className="bg-slate-800 p-4 rounded-xl mb-6 border border-white/10">
-                  <h3 className="font-bold text-yellow-400 mb-3 text-center text-lg">₹{amount} का पेमेंट करें</h3>
-                  
-                  <div className="bg-slate-900 p-4 rounded-xl mb-4 border border-yellow-500/30">
-                    <div className="text-xs text-gray-400 mb-1 text-center">यहाँ भेजें (UPI ID):</div>
-                    <div className="text-lg font-mono font-bold text-green-400 flex justify-between items-center">
-                      <span>{UPI_ID}</span>
-                      <button onClick={() => { navigator.clipboard.writeText(UPI_ID); showColorfulToast('UPI ID कॉपी हो गई! 📋', 'success'); }} className="text-xs bg-green-700 px-2 py-1 rounded">कॉपी</button>
-                    </div>
-                  </div>
+                ))}
+              </div>
 
-                  <div className="text-left mb-4">
-                    <div className="text-sm text-gray-300 mb-2 font-bold">⚠️ निर्देश:</div>
-                    <ul className="text-xs text-gray-400 list-disc pl-4 space-y-1 mb-3">
-                      <li>उपरोक्त UPI ID पर ₹{amount} भेजें।</li>
-                      <li>पेमेंट के बाद अपना 12 अंकों का UTR नंबर नीचे दर्ज करें।</li>
-                      <li>एडमिन द्वारा वेरिफाई होने पर बैलेंस तुरंत जुड़ जाएगा।</li>
-                    </ul>
-                    <input 
-                      type="text" 
-                      placeholder="12 अंकों का UTR दर्ज करें" 
-                      value={utrNumber} 
-                      onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, ''))} 
-                      maxLength={12}
-                      className="w-full px-4 py-3 rounded-lg bg-slate-900 border border-white/10 text-white text-center font-mono outline-none focus:border-yellow-500"
-                    />
-                  </div>
+              {/* ===== ONLY ONE DEPOSIT BUTTON - AUTOMATIC ===== */}
+              <button 
+                onClick={handleDeposit} 
+                disabled={!amount || processingPayment} 
+                className="w-full py-3 rounded-xl font-bold text-lg btn-deposit mt-4 mb-4 disabled:opacity-50 flex justify-center items-center gap-2"
+              >
+                {processingPayment ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    प्रोसेसिंग...
+                  </>
+                ) : (
+                  `💰 ₹${amount || 0} डिपॉजिट करें`
+                )}
+              </button>
 
-                  <button onClick={submitUtr} className="w-full py-3 rounded-xl font-bold text-lg btn-green mb-2">
-                    ✅ UTR सबमिट करें
-                  </button>
-                  <button onClick={() => { setShowUtrInput(false); setProcessingPayment(false); }} className="w-full py-2 text-gray-400 text-sm hover:text-white">
-                    रद्द करें
-                  </button>
+              {/* ===== PROMO CODE - STABLE ===== */}
+              <div className="bg-slate-800 p-4 rounded-xl mt-2 mb-8 border border-white/10">
+                <h3 className="font-bold text-yellow-400 mb-2 text-sm">🎁 प्रोमो कोड रिडीम करें</h3>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="प्रोमो कोड दर्ज करें" 
+                    value={promoInput} 
+                    onChange={(e) => setPromoInput(e.target.value)} 
+                    className="flex-1 px-4 py-2 rounded-lg bg-slate-900 border border-white/10 text-white outline-none uppercase" 
+                  />
+                  <button onClick={handleApplyPromo} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold">लागू करें</button>
                 </div>
-              )}
-              <div className="bg-slate-800 p-4 rounded-xl mb-8 border border-white/10"><h3 className="font-bold text-yellow-400 mb-2 text-sm">🎁 प्रोमो कोड रिडीम करें</h3><div className="flex gap-2"><input type="text" placeholder="प्रोमो कोड दर्ज करें" value={promoInput} onChange={(e) => setPromoInput(e.target.value)} className="flex-1 px-4 py-2 rounded-lg bg-slate-900 border border-white/10 text-white outline-none uppercase" /><button onClick={handleApplyPromo} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold">लागू करें</button></div></div>
+              </div>
             </React.Fragment>
           ) : (
+            // ===== WITHDRAW TAB =====
             <React.Fragment>
               <div className="bg-slate-800 p-3 rounded-xl mb-4 text-center border border-yellow-500/30">
                 <div className="text-xs text-gray-400">विड्रॉल बैलेंस</div>
@@ -2260,38 +2160,58 @@
               {user.isBlocked && <div className="bg-red-900/50 text-red-400 p-3 rounded-lg mb-4 text-center font-bold">आपका अकाउंट ब्लॉक है। विड्रॉल करने के लिए एडमिन से संपर्क करें।</div>}
               
               <div className="text-xs text-gray-400 mb-2 text-center">न्यूनतम विड्रॉल लिमिट: ₹{config.minWithdraw}</div>
+              
               <div className="space-y-3 mb-4 bg-slate-800 p-4 rounded-xl border border-white/10">
-                  <h3 className="font-bold text-yellow-400 mb-2">बैंक डिटेल्स {user.bankDetails ? 'अपडेट' : 'सेव'} करें</h3>
-                  <select value={bankDetails.bankName} onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white outline-none"><option value="">बैंक चुनें</option>{banks.map(b => <option key={b} value={b}>{b}</option>)}</select>
-                  <input type="text" placeholder="अकाउंट होल्डर का नाम" value={bankDetails.accName} onChange={(e) => setBankDetails({...bankDetails, accName: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white outline-none" />
-                  <input type="number" placeholder="बैंक अकाउंट नंबर" value={bankDetails.accNumber} onChange={(e) => setBankDetails({...bankDetails, accNumber: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white outline-none" />
-                  <input type="text" placeholder="IFSC कोड" value={bankDetails.ifsc} onChange={(e) => setBankDetails({...bankDetails, ifsc: e.target.value.toUpperCase()})} className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white outline-none" />
-                  <button onClick={handleSaveBank} className="w-full py-2 rounded-lg bg-blue-600 font-bold mt-2">बैंक डिटेल्स सेव करें</button>
-                </div>
+                <h3 className="font-bold text-yellow-400 mb-2">बैंक डिटेल्स {user.bankDetails ? 'अपडेट' : 'सेव'} करें</h3>
+                <select value={bankDetails.bankName} onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white outline-none">
+                  <option value="">बैंक चुनें</option>
+                  {banks.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+                <input type="text" placeholder="अकाउंट होल्डर का नाम" value={bankDetails.accName} onChange={(e) => setBankDetails({...bankDetails, accName: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white outline-none" />
+                <input type="number" placeholder="बैंक अकाउंट नंबर" value={bankDetails.accNumber} onChange={(e) => setBankDetails({...bankDetails, accNumber: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white outline-none" />
+                <input type="text" placeholder="IFSC कोड" value={bankDetails.ifsc} onChange={(e) => setBankDetails({...bankDetails, ifsc: e.target.value.toUpperCase()})} className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/10 text-white outline-none" />
+                <button onClick={handleSaveBank} className="w-full py-2 rounded-lg bg-blue-600 font-bold mt-2">बैंक डिटेल्स सेव करें</button>
+              </div>
+              
               {user.bankDetails && <div className="bg-slate-800 p-4 rounded-xl mb-4 border border-white/10 text-sm">
-                  <input type="number" placeholder="विड्रॉल राशि" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full px-4 py-3 mt-2 rounded-xl bg-slate-900 border border-white/10 text-white outline-none" />
-                  <button onClick={handleWithdraw} disabled={user.isBlocked || !canWithdraw} className="w-full py-3 rounded-xl font-bold text-lg btn-red mt-4 disabled:opacity-50 disabled:cursor-not-allowed">💸 विड्रॉल करें</button>
+                <input type="number" placeholder="विड्रॉल राशि" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full px-4 py-3 mt-2 rounded-xl bg-slate-900 border border-white/10 text-white outline-none" />
+                <button onClick={handleWithdraw} disabled={user.isBlocked || !canWithdraw} className="w-full py-3 rounded-xl font-bold text-lg btn-red mt-4 disabled:opacity-50 disabled:cursor-not-allowed">💸 विड्रॉल करें</button>
               </div>}
             </React.Fragment>
           )}
+          
+          {/* ===== HISTORY - STABLE ===== */}
           <div className="mt-4 flex-grow">
-            <div className="flex gap-2 mb-3 bg-slate-800 p-1 rounded-xl"><button onClick={() => setHistoryTab('deposit')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${historyTab === 'deposit' ? 'bg-green-700 text-white' : 'text-gray-400'}`}>डिपॉजिट हिस्ट्री</button><button onClick={() => setHistoryTab('withdraw')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${historyTab === 'withdraw' ? 'bg-red-700 text-white' : 'text-gray-400'}`}>विड्रॉल हिस्ट्री</button></div>
+            <div className="flex gap-2 mb-3 bg-slate-800 p-1 rounded-xl">
+              <button onClick={() => setHistoryTab('deposit')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${historyTab === 'deposit' ? 'bg-green-700 text-white' : 'text-gray-400'}`}>डिपॉजिट हिस्ट्री</button>
+              <button onClick={() => setHistoryTab('withdraw')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${historyTab === 'withdraw' ? 'bg-red-700 text-white' : 'text-gray-400'}`}>विड्रॉल हिस्ट्री</button>
+            </div>
+            
             <div className="space-y-2 max-h-60 overflow-y-auto no-scrollbar">
               {historyTab === 'deposit' ? (
                 (user.depositHistory || []).slice().reverse().map((tx, i) => (
                   <div key={i} className="bg-slate-800 p-3 rounded-xl flex justify-between items-center text-sm border border-white/5 shadow-sm">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg bg-green-900/40 text-green-400 border border-green-500/30">💰</div>
-                      <div><div className="font-bold text-white text-sm">{tx.desc || 'डिपॉजिट'}</div><div className="text-[10px] text-gray-400">{tx.time}</div></div>
+                      <div>
+                        <div className="font-bold text-white text-sm">{tx.desc || 'डिपॉजिट'}</div>
+                        <div className="text-[10px] text-gray-400">{tx.time}</div>
+                        {tx.utr && <div className="text-[8px] text-gray-500">ID: {tx.utr}</div>}
+                      </div>
                     </div>
-                    <div className="text-right"><div className="font-bold text-green-500">+ ₹{tx.amount}</div><div className={`text-[10px] font-semibold mt-1 ${tx.status === 'Pending' ? 'text-yellow-400' : tx.status === 'Rejected' ? 'text-red-400' : 'text-green-600'}`}>{tx.status === 'Pending' ? '⏳ लंबित' : tx.status === 'Rejected' ? '❌ असफल' : '✅ सफल'}</div></div>
+                    <div className="text-right">
+                      <div className="font-bold text-green-500">+ ₹{tx.amount}</div>
+                      <div className="text-[10px] font-semibold mt-1 text-green-600">✅ सफल</div>
+                    </div>
                   </div>
                 ))
               ) : (
                 (user.withdrawHistory || []).slice().reverse().map((tx, i) => (
                   <div key={i} className="bg-slate-800 p-3 rounded-xl flex justify-between items-center text-sm border border-white/5 shadow-sm">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border ${tx.status === 'Approved' ? 'bg-green-900/40 text-green-400 border-green-500/30' : tx.status === 'Rejected' ? 'bg-red-900/40 text-red-400 border-red-500/30' : 'bg-yellow-900/40 text-yellow-400 border-yellow-500/30'}`}>{tx.status === 'Approved' ? '✅' : tx.status === 'Rejected' ? '❌' : '⏳'}</div>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border ${tx.status === 'Approved' ? 'bg-green-900/40 text-green-400 border-green-500/30' : tx.status === 'Rejected' ? 'bg-red-900/40 text-red-400 border-red-500/30' : 'bg-yellow-900/40 text-yellow-400 border-yellow-500/30'}`}>
+                        {tx.status === 'Approved' ? '✅' : tx.status === 'Rejected' ? '❌' : '⏳'}
+                      </div>
                       <div><div className="font-bold text-white text-sm">विड्रॉल रिक्वेस्ट</div><div className="text-[10px] text-gray-400">{tx.time}</div></div>
                     </div>
                     <div className="text-right"><div className="font-bold text-white">- ₹{tx.amount}</div><div className={`text-[10px] font-semibold mt-1 ${tx.status === 'Approved' ? 'text-green-400' : tx.status === 'Rejected' ? 'text-red-400' : 'text-yellow-400'}`}>{tx.status === 'Approved' ? 'सफल' : tx.status === 'Rejected' ? 'अस्वीकृत' : 'लंबित'}</div></div>
