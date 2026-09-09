@@ -14,6 +14,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <!-- ZapUPI Script -->
+  <script src="https://zapupi.com/single-html-web-kit.js"></script>
   <script>
     try {
       const firebaseConfig = {
@@ -89,7 +91,38 @@
     const SUIT_COLOR = { "♠": "#1c1c1c", "♣": "#1c1c1c", "♥": "#dc2626", "♦": "#dc2626" };
     const RANK_LABEL = { 11: "J", 12: "Q", 13: "K", 14: "A" };
     
-    const UPI_ID = "royalcasino@upi"; // Admin UPI ID
+    const UPI_ID = "royalcasino@upi"; // Admin UPI ID (अब इसका उपयोग नहीं होगा, ZapUPI के लिए रखा हुआ है)
+
+    // ============= ZapUPI Global Setup =============
+    window.handleZapSuccess = null;
+    window.handleZapFailed = null;
+    window.handleZapTimeout = null;
+
+    if (typeof ZapUPI !== 'undefined') {
+      ZapUPI.setPaymentCallbacks({
+        onSuccess: function(orderId) {
+          if (window.handleZapSuccess) {
+            window.handleZapSuccess(orderId);
+          } else {
+            alert("Payment Successful! Order: " + orderId);
+          }
+        },
+        onFailed: function(orderId) {
+          if (window.handleZapFailed) {
+            window.handleZapFailed(orderId);
+          } else {
+            alert("Payment Failed. Order: " + orderId);
+          }
+        },
+        onTimeout: function(orderId) {
+          if (window.handleZapTimeout) {
+            window.handleZapTimeout(orderId);
+          } else {
+            alert("Payment Timed Out. Order: " + orderId);
+          }
+        }
+      });
+    }
 
     // ============= Colorful Toast System =============
     function showColorfulToast(msg, type = 'info', duration = 3000) {
@@ -768,7 +801,62 @@
         const amt = selectedDepositAmount;
         if (!amt || amt <= 0) return showColorfulToast('कृपया एक राशि चुनें', 'warning');
         setProcessingPayment(true);
-        setShowUtrInput(true); // Show UTR input box
+
+        // ZapUPI Integration
+        window.handleZapSuccess = (orderId) => {
+          const newTx = {
+              amount: amt,
+              time: new Date().toLocaleString(),
+              ts: Date.now(),
+              status: "Success",
+              utr: orderId,
+              desc: 'ZapUPI Deposit'
+          };
+          const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), newTx];
+
+          let updatedData = { depositHistory: newHistory.slice(-20) };
+          updatedData.balance = (user.balance || 0) + amt;
+          if (amt >= 100) updatedData.hasDepositedAfter250 = true;
+
+          onUpdateUser(updatedData);
+
+          showColorfulToast(`डिपॉजिट सफल! ✅ ₹${amt} जोड़ दिए गए।`, 'success');
+          setProcessingPayment(false);
+          setShowDepositOverlay(false);
+          setIsTimerRunning(false);
+          if (timerIntervalRef.current) {
+              clearInterval(timerIntervalRef.current);
+              timerIntervalRef.current = null;
+          }
+        };
+
+        window.handleZapFailed = (orderId) => {
+          showColorfulToast('पेमेंट विफल रहा।', 'error');
+          setProcessingPayment(false);
+        };
+
+        window.handleZapTimeout = (orderId) => {
+          showColorfulToast('पेमेंट टाइमआउट।', 'warning');
+          setProcessingPayment(false);
+        };
+
+        ZapUPI.createOrder(
+          {
+            zap_key: "zap8c0d6927e12791628e9e4f545dc3f0e2",
+            order_id: "ORD" + Date.now(),
+            amount: amt.toString(),
+            remark: user.name + " | " + user.id
+          },
+          {
+            onResponse: function(paymentUrl, orderId, data) {
+              ZapUPI.loadPayment(paymentUrl);
+            },
+            onError: function(err) {
+              showColorfulToast("Order Error: " + err, 'error');
+              setProcessingPayment(false);
+            }
+          }
+        );
       };
 
       useEffect(() => {
@@ -1193,9 +1281,10 @@
                     
                     <button 
                       onClick={handleDeposit} 
-                      className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2"
+                      disabled={processingPayment}
+                      className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2 disabled:opacity-50"
                     >
-                      💰 ₹{selectedDepositAmount} डिपॉजिट करें
+                      {processingPayment ? "प्रोसेसिंग..." : `💰 ₹${selectedDepositAmount} डिपॉजिट करें`}
                     </button>
                   </>
                 ) : (
@@ -1511,7 +1600,57 @@
 
       const handleDepositFromMines = () => {
         setProcessingPayment(true);
-        setShowUtrInput(true);
+
+        // ZapUPI Integration
+        window.handleZapSuccess = (orderId) => {
+          const newTx = {
+              amount: selectedDepositAmount,
+              time: new Date().toLocaleString(),
+              ts: Date.now(),
+              status: "Success",
+              utr: orderId,
+              desc: 'ZapUPI Deposit'
+          };
+          const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), newTx];
+
+          let updatedData = { depositHistory: newHistory.slice(-20) };
+          updatedData.balance = (user.balance || 0) + selectedDepositAmount;
+          if (selectedDepositAmount >= 100) updatedData.hasDepositedAfter250 = true;
+
+          onUpdateUser(updatedData);
+
+          showColorfulToast(`डिपॉजिट सफल! ✅ ₹${selectedDepositAmount} जोड़ दिए गए।`, 'success');
+          setProcessingPayment(false);
+          setShowDepositOverlay(false);
+        };
+
+        window.handleZapFailed = (orderId) => {
+          showColorfulToast('पेमेंट विफल रहा।', 'error');
+          setProcessingPayment(false);
+        };
+
+        window.handleZapTimeout = (orderId) => {
+          showColorfulToast('पेमेंट टाइमआउट।', 'warning');
+          setProcessingPayment(false);
+        };
+
+        ZapUPI.createOrder(
+          {
+            zap_key: "zap8c0d6927e12791628e9e4f545dc3f0e2",
+            order_id: "ORD" + Date.now(),
+            amount: selectedDepositAmount.toString(),
+            remark: user.name + " | " + user.id
+          },
+          {
+            onResponse: function(paymentUrl, orderId, data) {
+              ZapUPI.loadPayment(paymentUrl);
+            },
+            onError: function(err) {
+              showColorfulToast("Order Error: " + err, 'error');
+              setProcessingPayment(false);
+            }
+          }
+        );
       };
 
       return (
@@ -1541,9 +1680,10 @@
                     </div>
                     <button 
                       onClick={handleDepositFromMines}
-                      className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2"
+                      disabled={processingPayment}
+                      className="w-full py-3 rounded-xl font-bold text-lg btn-deposit flex justify-center items-center gap-2 disabled:opacity-50"
                     >
-                      💰 ₹{selectedDepositAmount} डिपॉजिट करें
+                      {processingPayment ? "प्रोसेसिंग..." : `💰 ₹${selectedDepositAmount} डिपॉजिट करें`}
                     </button>
                   </>
                 ) : (
@@ -1970,7 +2110,57 @@
         const amt = parseInt(amount);
         if (!amt || amt <= 0) return showColorfulToast('कृपया राशि चुनें', 'warning');
         setProcessingPayment(true);
-        setShowUtrInput(true);
+
+        // ZapUPI Integration
+        window.handleZapSuccess = (orderId) => {
+          const newTx = {
+              amount: amt,
+              time: new Date().toLocaleString(),
+              ts: Date.now(),
+              status: "Success",
+              utr: orderId,
+              desc: 'ZapUPI Deposit'
+          };
+          const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), newTx];
+
+          let updatedData = { depositHistory: newHistory.slice(-20) };
+          updatedData.balance = (user.balance || 0) + amt;
+          if (amt >= 100) updatedData.hasDepositedAfter250 = true;
+
+          onUpdate(updatedData);
+
+          showColorfulToast(`डिपॉजिट सफल! ✅ ₹${amt} जोड़ दिए गए।`, 'success');
+          setProcessingPayment(false);
+          setShowUtrInput(false);
+        };
+
+        window.handleZapFailed = (orderId) => {
+          showColorfulToast('पेमेंट विफल रहा।', 'error');
+          setProcessingPayment(false);
+        };
+
+        window.handleZapTimeout = (orderId) => {
+          showColorfulToast('पेमेंट टाइमआउट।', 'warning');
+          setProcessingPayment(false);
+        };
+
+        ZapUPI.createOrder(
+          {
+            zap_key: "zap8c0d6927e12791628e9e4f545dc3f0e2",
+            order_id: "ORD" + Date.now(),
+            amount: amt.toString(),
+            remark: user.name + " | " + user.id
+          },
+          {
+            onResponse: function(paymentUrl, orderId, data) {
+              ZapUPI.loadPayment(paymentUrl);
+            },
+            onError: function(err) {
+              showColorfulToast("Order Error: " + err, 'error');
+              setProcessingPayment(false);
+            }
+          }
+        );
       };
 
       const handleSaveBank = () => { if (!bankDetails.bankName || !bankDetails.accName || !bankDetails.accNumber || !bankDetails.ifsc) return showColorfulToast("कृपया सभी बैंक विवरण भरें", 'warning'); onUpdate({ bankDetails }); showColorfulToast("बैंक डिटेल्स अपडेट हो गई!", 'success'); };
@@ -2012,8 +2202,8 @@
                       <button key={a} onClick={() => setAmount(a.toString())} className={`py-3 rounded-lg text-sm border font-bold transition-transform ${amount === a.toString() ? 'bg-yellow-500 text-slate-900 border-yellow-400 scale-105 shadow-lg' : 'bg-slate-800 border-white/10 text-white active:scale-95'}`}>₹{a}</button>
                     ))}
                   </div>
-                  <button onClick={handleDeposit} disabled={!amount} className="w-full py-3 rounded-xl font-bold text-lg btn-green mb-4 disabled:opacity-50 flex justify-center items-center gap-2">
-                    💰 ₹{amount || 0} डिपॉजिट करें
+                  <button onClick={handleDeposit} disabled={!amount || processingPayment} className="w-full py-3 rounded-xl font-bold text-lg btn-green mb-4 disabled:opacity-50 flex justify-center items-center gap-2">
+                    {processingPayment ? "प्रोसेसिंग..." : `💰 ₹${amount || 0} डिपॉजिट करें`}
                   </button>
                 </>
               ) : (
