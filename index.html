@@ -81,9 +81,7 @@
     .toast-info { background: linear-gradient(135deg, #1e3a5f, #1d4ed8); border: 2px solid #60a5ba; }
     .toast-deposit { background: linear-gradient(135deg, #4c1d95, #7c3aed); border: 2px solid #a78bfa; }
 
-    .balance-update {
-      animation: balancePulse 0.6s ease-in-out;
-    }
+    .balance-update { animation: balancePulse 0.6s ease-in-out; }
     @keyframes balancePulse {
       0% { transform: scale(1); }
       30% { transform: scale(1.15); color: #4ade80; }
@@ -92,7 +90,6 @@
     }
     
     .blocked-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; color: white; text-align: center; }
-
     .deposit-container { position: relative; min-height: 100%; }
     .deposit-container .content-wrapper { transition: none !important; }
     .deposit-container .amount-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -229,7 +226,7 @@
     const genId = () => 'TP' + Math.floor(100000 + Math.random() * 900000);
     const genRef = (name) => (name.substring(0, 3).toUpperCase() + Math.floor(1000 + Math.random() * 9000));
 
-    // ============= CENTRALIZED ZAPUPI PAYMENT FUNCTION WITH ORDER STATUS API =============
+    // ============= CENTRALIZED ZAPUPI PAYMENT FUNCTION WITH STRICT ORDER STATUS API =============
     window.zapPollInterval = null; // ग्लोबल टाइमर वेरिएबल
 
     function processZapUPIPayment(amount, user, onSuccess, onError) {
@@ -278,20 +275,28 @@
           });
           const data = await response.json();
           
-          // अगर स्टेटस सफल मिलता है
-          if (data && (data.status === 'success' || data.payment_status === 'success' || (data.data && data.data.status === 'success'))) {
+          // स्ट्रिक्ट चेक: हम सिर्फ payment_status या txn_status चेक करेंगे, status को नहीं
+          // क्योंकि "Order Created" का status भी success होता है, जिससे गलती हो रही थी
+          let payStatus = '';
+          if (data) {
+            payStatus = (data.payment_status || data.txn_status || (data.data && (data.data.payment_status || data.data.status)) || '').toString().toLowerCase();
+          }
+          
+          // अगर पेमेंट वाकई सफल हुआ है
+          if (payStatus === 'success' || payStatus === 'paid' || payStatus === 'captured') {
             if (window.zapPollInterval) clearInterval(window.zapPollInterval);
             window.zapPollInterval = null;
             showColorfulToast("पेमेंट सफल! बैलेंस अपडेट हो रहा है...", 'success');
             onSuccess(currentOrderId);
           } 
-          // अगर स्टेटस फेल मिलता है
-          else if (data && (data.status === 'failed' || data.payment_status === 'failed' || (data.data && data.data.status === 'failed'))) {
+          // अगर पेमेंट फेल हुआ है
+          else if (payStatus === 'failed' || payStatus === 'cancelled' || payStatus === 'expired') {
             if (window.zapPollInterval) clearInterval(window.zapPollInterval);
             window.zapPollInterval = null;
             showColorfulToast('पेमेंट विफल रहा।', 'error');
             onError(currentOrderId);
           }
+          // अगर 'pending' है तो कुछ नहीं करेंगे, टाइमर चालू रहेगा
         } catch (e) {
           console.error("Status polling error:", e);
         }
@@ -311,7 +316,7 @@
         {
           onResponse: function(paymentUrl, orderId, data) {
             if (paymentUrl) {
-              // यह लाइन पेमेंट पेज को ऐप के अंदर ही खोलती है, ताकि यूज़र वापस ऐप पर आ सके
+              // यह लाइन पेमेंट पेज को ऐप के अंदर ही खोलती है
               ZapUPI.loadPayment(paymentUrl);
             } else {
               showColorfulToast("पेमेंट URL प्राप्त नहीं हुआ।", 'error');
