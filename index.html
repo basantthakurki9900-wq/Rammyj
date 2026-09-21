@@ -102,7 +102,6 @@
     .boot-chip-3d .boot-val { font-size: 18px; line-height: 1; }
     .boot-chip-3d .boot-label { font-size: 7px; font-weight: 600; opacity: 0.8; letter-spacing: 0.5px; }
 
-    /* Dragon Tiger */
     .dragon-tiger-container { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 30%, #1a0a2e 0%, #0f051d 100%); }
     .dragon-tiger-arena { display: flex; justify-content: space-around; align-items: center; width: 100%; padding: 20px; gap: 20px; }
     .dragon-card-slot, .tiger-card-slot { width: 100px; height: 140px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 60px; border: 3px solid; transition: all 0.3s ease; }
@@ -117,7 +116,6 @@
     .bet-btn:active { transform: scale(0.95); }
     .bet-btn:disabled { opacity: 0.4; }
 
-    /* Rocket */
     .rocket-container { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: radial-gradient(circle at 50% 100%, #1a0a3e 0%, #0a0420 50%, #000 100%); overflow: hidden; }
     .rocket-sky { position: absolute; inset: 0; background: radial-gradient(circle at 30% 70%, rgba(100,50,200,0.3) 0%, transparent 50%), radial-gradient(circle at 70% 30%, rgba(50,100,200,0.2) 0%, transparent 50%); }
     .rocket-star { position: absolute; width: 2px; height: 2px; background: white; border-radius: 50%; animation: twinkle 2s infinite; }
@@ -133,7 +131,6 @@
     .rocket-cashout-btn { background: linear-gradient(180deg, #f59e0b, #d97706); color: #0f172a; font-weight: 900; box-shadow: 0 6px 0 #92400e, 0 8px 16px rgba(0,0,0,0.4); }
     .rocket-cashout-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #92400e; }
 
-    /* AUTH SCREEN */
     .auth-bg { min-height: 100%; background: radial-gradient(ellipse at top, #1e1b4b 0%, #0a0420 50%, #000 100%); position: relative; overflow: hidden; padding: 16px; display: flex; flex-direction: column; justify-content: center; }
     .auth-bg::before { content: ''; position: absolute; bottom: -50px; left: -50px; right: -50px; height: 150px; background: linear-gradient(90deg, #7c3aed, #2563eb, #7c3aed); filter: blur(60px); opacity: 0.4; border-radius: 50%; pointer-events: none; }
     .auth-crown { text-align: center; font-size: 56px; filter: drop-shadow(0 0 20px rgba(251,191,36,0.6)); margin-bottom: 8px; }
@@ -171,7 +168,6 @@
     .auth-feature-title { font-size: 10px; font-weight: 700; color: white; margin-bottom: 2px; }
     .auth-feature-desc { font-size: 8px; color: #64748b; line-height: 1.3; }
 
-    /* THEME SLIDER */
     .theme-slider-wrapper { position: relative; width: 100%; height: 200px; border-radius: 20px; overflow: hidden; margin-bottom: 12px; border: 3px solid rgba(251,191,36,0.6); box-shadow: 0 0 30px rgba(251,191,36,0.35), 0 12px 30px rgba(0,0,0,0.6); background: linear-gradient(135deg, #1e1b4b, #4c1d95); }
     .theme-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 0.8s ease-in-out; display: flex; align-items: center; justify-content: center; }
     .theme-slide.active { opacity: 1; }
@@ -181,7 +177,6 @@
     .theme-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.5); transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
     .theme-dot.active { background: #fbbf24; width: 24px; border-radius: 4px; box-shadow: 0 0 12px rgba(251,191,36,0.9); }
 
-    /* FAKE WITHDRAWAL POPUP */
     .wd-popup-container { width: 100%; margin-bottom: 10px; }
     .wd-popup { background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(10px); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; border-left: 4px solid #22c55e; box-shadow: 0 6px 20px rgba(0,0,0,0.6); animation: slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1); margin-bottom: 8px; border-top: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); }
     .wd-popup.leaving { animation: slideOutLeft 0.5s ease-in forwards; }
@@ -194,7 +189,6 @@
     .wd-badge .tick { font-size: 18px; }
     .wd-badge .time { font-size: 8px; color: #64748b; margin-top: 1px; }
 
-    /* RESULT MARK */
     .result-overlay { position: fixed; inset: 0; z-index: 300; display: flex; align-items: center; justify-content: center; pointer-events: none; }
     .result-mark { width: 130px; height: 130px; border-radius: 50%; display: flex; align-items: center; justify-content: center; animation: tickPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; }
     .result-mark.fade-out { animation: tickFadeOut 0.5s ease-in forwards; }
@@ -231,7 +225,6 @@
       });
     }
 
-    // GLOBAL RESULT MARK
     window.showResultMark = function(type) {
       const existing = document.getElementById('global-result-mark');
       if (existing) existing.remove();
@@ -295,7 +288,8 @@
         broadcastMsg: "",
         withdrawTax: 5,
         depositBonusPercent: 5,
-        referralCommissionPercent: 5,
+        referralCommissionPercent: 2,
+        referralMinDeposit: 100,
         referralRewards: { 1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600, 7: 700, 8: 800, 9: 900, 10: 1000 },
         card1Title: "PLAY\nLOCAL",
         card2Title: "MINES",
@@ -373,6 +367,56 @@
           }
         }
       );
+    }
+
+    // ============ REFERRAL HELPERS ============
+    // जब referrer को बोनस/कमीशन मिले, तो ये function call करें
+    async function creditReferrer(referrerId, amount, historyEntry, fieldUpdates = {}) {
+      if (!referrerId || !amount || amount <= 0) return;
+      try {
+        // Firebase से fresh data लें
+        let referrer = null;
+        if (window.db) {
+          const snap = await window.db.ref('tp_users/' + referrerId).once('value');
+          referrer = snap.val();
+        }
+        if (!referrer) {
+          const localUsers = getUsers();
+          referrer = localUsers[referrerId];
+        }
+        if (!referrer) return;
+
+        const newBalance = (referrer.balance || 0) + amount;
+        const newEarnings = (referrer.referralEarnings || 0) + amount;
+        const newHistory = [...(referrer.referralHistory || []), historyEntry].slice(-100);
+
+        const updates = {
+          balance: newBalance,
+          referralEarnings: newEarnings,
+          referralHistory: newHistory,
+          ...fieldUpdates
+        };
+
+        // Firebase update
+        if (window.db) {
+          await window.db.ref('tp_users/' + referrerId).update(updates);
+        }
+
+        // Local storage update
+        const localUsers = getUsers();
+        if (localUsers[referrerId]) {
+          localUsers[referrerId] = { ...localUsers[referrerId], ...updates };
+          localStorage.setItem('tp_users', JSON.stringify(localUsers));
+        }
+
+        // अगर referrer वर्तमान में लॉगइन है, तो logged_in भी update करें
+        const loggedIn = safeParse(localStorage.getItem('tp_logged_in'), null);
+        if (loggedIn && loggedIn.id === referrerId) {
+          const updatedLoggedIn = { ...loggedIn, ...updates };
+          localStorage.setItem('tp_logged_in', JSON.stringify(updatedLoggedIn));
+        }
+        console.log("✅ Referrer credited:", referrerId, "₹" + amount, historyEntry.type);
+      } catch (e) { console.error("creditReferrer error:", e); }
     }
 
     // Card Logic
@@ -1612,22 +1656,68 @@
             if (deviceUsers.length >= 1) { window.showResultMark('failure'); setIsSubmitting(false); return; }
             if (window.db) { try { const snap = await window.db.ref('tp_users').once('value'); const allDbUsers = snap.val() || {}; if (Object.values(allDbUsers).find(u => u.mobile === mobile && !u.isDemo)) { window.showResultMark('failure'); setIsSubmitting(false); return; } } catch(e) {} }
             const newId = genId();
+            
+            // ============ REFERRAL VALIDATION ============
             let referredByCode = '';
+            let referrerUser = null;
             if (refCode) {
               let referrerFound = false;
-              if (window.db) { try { const snapshot = await window.db.ref('tp_users').once('value'); const allUsers = snapshot.val() || {}; const referrer = Object.values(allUsers).find(u => u.referralCode && u.referralCode === refCode); if (referrer) { referredByCode = refCode; referrerFound = true; } } catch (e) { const localReferrer = Object.values(localUsers).find(u => u.referralCode && u.referralCode === refCode); if (localReferrer) { referredByCode = refCode; referrerFound = true; } } }
-              else { const localReferrer = Object.values(localUsers).find(u => u.referralCode && u.referralCode === refCode); if (localReferrer) { referredByCode = refCode; referrerFound = true; } }
+              if (window.db) { 
+                try { 
+                  const snapshot = await window.db.ref('tp_users').once('value'); 
+                  const allUsers = snapshot.val() || {}; 
+                  referrerUser = Object.values(allUsers).find(u => u.referralCode && u.referralCode === refCode && !u.isDemo); 
+                  if (referrerUser) { referredByCode = refCode; referrerFound = true; } 
+                } catch (e) { 
+                  referrerUser = Object.values(localUsers).find(u => u.referralCode && u.referralCode === refCode && !u.isDemo); 
+                  if (referrerUser) { referredByCode = refCode; referrerFound = true; } 
+                } 
+              }
+              else { 
+                referrerUser = Object.values(localUsers).find(u => u.referralCode && u.referralCode === refCode && !u.isDemo); 
+                if (referrerUser) { referredByCode = refCode; referrerFound = true; } 
+              }
               if (!referrerFound) { window.showResultMark('failure'); setIsSubmitting(false); return; }
             }
+            
             const newUser = { 
               id: newId, name, mobile, password: pass, avatar: '🧑', balance: 50, withdrawableBalance: 0, bonusBalance: 0,
               referralCode: genRef(name), wins: 0, losses: 0, depositHistory: [{ amount: 50, time: new Date().toLocaleString(), desc: 'Signup Bonus', status: 'Success' }],
               withdrawHistory: [], gameHistory: [], sessionWinnings: 0, gamesPlayed: 0, recentLosses: 0, bankDetails: null, isBlocked: false, usedPromos: [], createdAt: Date.now(), referralCount: 0, referredBy: referredByCode, referralEarnings: 0, isOnline: false, isPlaying: false, isDepositBonus: false, hasDepositedAfter250: false, deviceId: deviceId,
-              dragonTigerGames: 0, dragonTigerWins: 0, dragonTigerLosses: 0, dragonTigerTies: 0, dragonTigerRecentWins: 0, rocketGames: 0, rocketWins: 0, rocketLosses: 0, isDemo: false
+              dragonTigerGames: 0, dragonTigerWins: 0, dragonTigerLosses: 0, dragonTigerTies: 0, dragonTigerRecentWins: 0, rocketGames: 0, rocketWins: 0, rocketLosses: 0, isDemo: false,
+              referralHistory: [], qualifiedReferrals: [], pendingReferrals: referredByCode ? [newId] : [], firstDepositDone: false
             };
             saveUserToDB(newId, newUser); 
             localStorage.setItem('tp_logged_in', JSON.stringify(newUser)); 
             const allUsersLocal = getUsers(); allUsersLocal[newId] = newUser; localStorage.setItem('tp_users', JSON.stringify(allUsersLocal));
+            
+            // ============ PENDING REFERRAL ENTRY ON REFERRER ============
+            if (referrerUser && referrerUser.id) {
+              const pendingEntry = {
+                userId: newId,
+                name: name,
+                mobile: mobile,
+                time: new Date().toLocaleString(),
+                ts: Date.now(),
+                status: 'pending'
+              };
+              const newPendingReferrals = [...(referrerUser.pendingReferrals || []), pendingEntry].slice(-100);
+              
+              if (window.db) {
+                await window.db.ref('tp_users/' + referrerUser.id).update({ pendingReferrals: newPendingReferrals });
+              }
+              const localUsers2 = getUsers();
+              if (localUsers2[referrerUser.id]) {
+                localUsers2[referrerUser.id] = { ...localUsers2[referrerUser.id], pendingReferrals: newPendingReferrals };
+                localStorage.setItem('tp_users', JSON.stringify(localUsers2));
+              }
+              const loggedIn2 = safeParse(localStorage.getItem('tp_logged_in'), null);
+              if (loggedIn2 && loggedIn2.id === referrerUser.id) {
+                loggedIn2.pendingReferrals = newPendingReferrals;
+                localStorage.setItem('tp_logged_in', JSON.stringify(loggedIn2));
+              }
+            }
+            
             window.showResultMark('success');
             setTimeout(() => onSignup(newUser), 800);
           }
@@ -1840,10 +1930,14 @@
       const referralLink = `${window.location.origin}${window.location.pathname}?ref=${user.referralCode}`; 
       const config = getConfig();
       const referralRewards = config.referralRewards || { 1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600, 7: 700, 8: 800, 9: 900, 10: 1000 };
-      const commissionPercent = config.referralCommissionPercent || 5;
+      const commissionPercent = config.referralCommissionPercent || 2;
+      const minDeposit = config.referralMinDeposit || 100;
       const myReferrals = Object.values(allUsers).filter(u => u.referredBy === user.referralCode && !u.isDemo);
-      const referralCount = myReferrals.length;
-      const myEarnings = referralRewards[Math.min(referralCount, 10)] || (referralCount > 10 ? 1000 + (referralCount - 10) * 100 : 0);
+      const referralCount = user.referralCount || 0;
+      const myEarnings = user.referralEarnings || 0;
+      const pendingList = (user.pendingReferrals || []).filter(p => p.status === 'pending');
+      const historyList = (user.referralHistory || []);
+      
       const copyToClipboard = () => { navigator.clipboard.writeText(referralLink); window.showResultMark('success'); }; 
       const shareText = `🃏 रॉयल कैसीनो में मेरे साथ खेलें और बोनस पाएं! 🎁\n${referralLink}`;
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
@@ -1852,12 +1946,12 @@
       return React.createElement("div", { className: "app-wrapper bg-slate-900 text-white p-4 flex flex-col" }, 
         React.createElement("div", { className: "flex items-center mb-6" }, React.createElement("button", { onClick: onBack, className: "mr-4 text-yellow-400 text-2xl" }, "←"), React.createElement("h2", { className: "text-xl font-bold" }, "रेफरल और कमाई")), 
         React.createElement("div", { className: "grid grid-cols-3 gap-2 mb-4" },
-          React.createElement("div", { className: "bg-gradient-to-br from-purple-700 to-purple-900 p-3 rounded-xl text-center" }, React.createElement("div", { className: "text-2xl font-bold text-yellow-400" }, referralCount), React.createElement("div", { className: "text-[10px] text-white/70" }, "कुल रेफरल्स")),
-          React.createElement("div", { className: "bg-gradient-to-br from-green-700 to-green-900 p-3 rounded-xl text-center" }, React.createElement("div", { className: "text-2xl font-bold text-yellow-400" }, "₹", myEarnings), React.createElement("div", { className: "text-[10px] text-white/70" }, "बोनस कमाई")),
-          React.createElement("div", { className: "bg-gradient-to-br from-blue-700 to-blue-900 p-3 rounded-xl text-center" }, React.createElement("div", { className: "text-2xl font-bold text-yellow-400" }, "₹", user.referralEarnings || 0), React.createElement("div", { className: "text-[10px] text-white/70" }, "कमीशन"))
+          React.createElement("div", { className: "bg-gradient-to-br from-purple-700 to-purple-900 p-3 rounded-xl text-center" }, React.createElement("div", { className: "text-2xl font-bold text-yellow-400" }, referralCount), React.createElement("div", { className: "text-[10px] text-white/70" }, "क्वालिफाइड")),
+          React.createElement("div", { className: "bg-gradient-to-br from-orange-700 to-orange-900 p-3 rounded-xl text-center" }, React.createElement("div", { className: "text-2xl font-bold text-yellow-400" }, pendingList.length), React.createElement("div", { className: "text-[10px] text-white/70" }, "पेंडिंग")),
+          React.createElement("div", { className: "bg-gradient-to-br from-green-700 to-green-900 p-3 rounded-xl text-center" }, React.createElement("div", { className: "text-2xl font-bold text-yellow-400" }, "₹", myEarnings), React.createElement("div", { className: "text-[10px] text-white/70" }, "कुल कमाई"))
         ),
         React.createElement("div", { className: "bg-slate-800 p-3 rounded-xl mb-4" },
-          React.createElement("div", { className: "text-xs font-bold text-yellow-400 mb-2" }, "🎁 इनाम तालिका"),
+          React.createElement("div", { className: "text-xs font-bold text-yellow-400 mb-2" }, "🎁 इनाम तालिका (हर रेफरल पर)"),
           React.createElement("div", { className: "grid grid-cols-5 gap-1 text-center text-[10px]" }, [1,2,3,4,5,6,7,8,9,10].map(n => React.createElement("div", { key: n, className: `p-1.5 rounded ${referralCount >= n ? 'bg-green-700' : 'bg-slate-700'}` }, React.createElement("div", { className: "font-bold" }, n), React.createElement("div", { className: referralCount >= n ? 'text-yellow-300' : 'text-gray-400' }, "₹" + (referralRewards[n] || n * 100)))))
         ),
         React.createElement("div", { className: "bg-gradient-to-br from-purple-700 to-blue-700 p-4 rounded-2xl text-center mb-4 shadow-xl" }, 
@@ -1868,9 +1962,47 @@
           React.createElement("button", { onClick: copyToClipboard, className: "w-full py-2.5 bg-white text-purple-700 font-bold rounded-xl text-sm btn-3d" }, "लिंक कॉपी करें")
         ), 
         React.createElement("div", { className: "bg-slate-800 p-3 rounded-xl mb-4 text-xs border border-white/5 flex justify-between" }, React.createElement("span", null, "रेफरल कोड:"), React.createElement("span", { className: "font-mono text-yellow-500 font-bold" }, user.referralCode)),
+        
+        pendingList.length > 0 && React.createElement("div", { className: "bg-slate-800 p-3 rounded-xl mb-4 border border-orange-500/30" },
+          React.createElement("div", { className: "text-sm font-bold text-orange-400 mb-2" }, "⏳ पेंडिंग रेफरल्स (" + pendingList.length + ")"),
+          React.createElement("div", { className: "text-[10px] text-gray-400 mb-2" }, "जब ये ₹" + minDeposit + " या ज्यादा डिपॉजिट करेंगे, आपको बोनस मिलेगा"),
+          React.createElement("div", { className: "space-y-2 max-h-40 overflow-y-auto no-scrollbar" }, 
+            pendingList.slice().reverse().map((p, i) => React.createElement("div", { key: i, className: "bg-slate-900 p-2.5 rounded-lg border border-white/5 flex justify-between items-center" },
+              React.createElement("div", null,
+                React.createElement("div", { className: "text-xs font-bold text-white" }, "👤 " + p.name),
+                React.createElement("div", { className: "text-[10px] text-gray-400" }, "📱 " + p.mobile),
+                React.createElement("div", { className: "text-[9px] text-gray-500" }, p.time)
+              ),
+              React.createElement("div", { className: "text-[10px] font-bold text-orange-400" }, "₹" + minDeposit + "+ का इंतज़ार")
+            ))
+          )
+        ),
+        
+        historyList.length > 0 && React.createElement("div", { className: "bg-slate-800 p-3 rounded-xl mb-4 border border-white/5" },
+          React.createElement("div", { className: "text-sm font-bold text-yellow-400 mb-2" }, "📜 रेफरल हिस्ट्री"),
+          React.createElement("div", { className: "space-y-2 max-h-64 overflow-y-auto no-scrollbar" },
+            historyList.slice().reverse().map((h, i) =>
+              React.createElement("div", { key: i, className: "bg-slate-900 p-2.5 rounded-lg border border-white/5 flex justify-between items-center" },
+                React.createElement("div", null,
+                  React.createElement("div", { className: "text-xs font-bold text-white" },
+                    h.type === 'reward' ? '🎉 रेफरल बोनस #' + h.referralNumber : h.type === 'commission' ? '💸 डिपॉजिट कमीशन' : h.type === 'signup' ? '👋 साइनअप' : '💰 बोनस'
+                  ),
+                  React.createElement("div", { className: "text-[10px] text-gray-400" },
+                    h.type === 'reward' ? (h.name + " ने ₹" + h.depositAmount + " डिपॉजिट किया") :
+                    h.type === 'commission' ? (h.fromName + " ने ₹" + h.depositAmount + " डिपॉजिट किया (" + h.commissionPercent + "%)") :
+                    (h.name + (h.mobile ? " (" + h.mobile + ")" : ""))
+                  ),
+                  React.createElement("div", { className: "text-[9px] text-gray-500" }, h.time)
+                ),
+                React.createElement("div", { className: "font-bold text-green-400 text-sm" }, "+₹" + h.amount)
+              )
+            )
+          )
+        ),
+        
         React.createElement("div", { className: "bg-slate-800 p-3 rounded-xl mb-4 border border-yellow-500/30" },
           React.createElement("div", { className: "flex justify-between items-center mb-3" }, React.createElement("div", { className: "text-sm font-bold text-yellow-400" }, "👥 मेरे रेफरल्स (" + referralCount + ")"), React.createElement("div", { className: "text-[10px] text-gray-400" }, "कुल डिपॉजिट: ₹" + totalReferredDeposits)),
-          myReferrals.length === 0 ? React.createElement("div", { className: "text-gray-500 text-xs text-center py-4" }, "अभी तक कोई रेफरल नहीं हुआ") :
+          myReferrals.length === 0 ? React.createElement("div", { className: "text-gray-500 text-xs text-center py-4" }, "अभी तक कोई क्वालिफाइड रेफरल नहीं हुआ") :
           React.createElement("div", { className: "space-y-2 max-h-64 overflow-y-auto no-scrollbar" }, myReferrals.map((r, i) => {
             const deposits = (r.depositHistory || []).filter(d => d.status === 'Success' && d.desc !== 'Signup Bonus' && d.desc !== 'Promo Code');
             const totalDep = deposits.reduce((s, d) => s + (parseInt(d.amount) || 0), 0);
@@ -1883,11 +2015,10 @@
             );
           }))
         ),
-        React.createElement("div", { className: "bg-blue-900/30 border border-blue-500/30 rounded-xl p-3 text-[10px] text-blue-300 text-center" }, "ℹ️ जब आपका रेफर किया हुआ यूज़र डिपॉजिट करता है, तो आपको " + commissionPercent + "% कमीशन सीधे आपके बैलेंस में मिलता है!")
+        React.createElement("div", { className: "bg-blue-900/30 border border-blue-500/30 rounded-xl p-3 text-[10px] text-blue-300 text-center" }, "ℹ️ जब आपका रेफर किया हुआ यूजर ₹" + minDeposit + " या ज्यादा डिपॉजिट करता है, तो आपको तय बोनस (₹100, ₹200...) + हर डिपॉजिट पर " + commissionPercent + "% कमीशन मिलता है!")
       );
     }
 
-    // ============ WALLET WITH AUTO REFRESH AFTER UTR SUBMIT ============
     function WalletScreen({ user, onBack, onUpdate, config, onRefreshUser }) {
       const [amount, setAmount] = useState(''); const [tab, setTab] = useState('deposit'); const [historyTab, setHistoryTab] = useState('deposit'); 
       const [bankDetails, setBankDetails] = useState(user.bankDetails || { bankName: '', accName: '', accNumber: '', ifsc: '' }); 
@@ -1897,9 +2028,85 @@
       const quickAmounts = (config.depositAmounts && config.depositAmounts.length > 0) ? config.depositAmounts : [100, 200, 500, 1000];
       const bonusRate = (config.depositBonusPercent || 5) / 100;
       const bonusPercent = config.depositBonusPercent || 5;
+      const taxRate = (config.withdrawTax || 5) / 100;
       const totalDeposits = (user.depositHistory || []).reduce((sum, d) => { if (d.status === 'Success' && d.desc !== 'Signup Bonus' && d.desc !== 'Promo Code') return sum + (parseInt(d.amount) || 0); return sum; }, 0);
       const gamesPlayed = user.gamesPlayed || 0;
       const canWithdraw = totalDeposits >= 100 && gamesPlayed > 0;
+      const commissionPercent = config.referralCommissionPercent || 2;
+      const minRefDeposit = config.referralMinDeposit || 100;
+      const referralRewards = config.referralRewards || { 1: 100, 2: 200, 3: 300, 4: 400, 5: 500, 6: 600, 7: 700, 8: 800, 9: 900, 10: 1000 };
+
+      // ============ REFERRAL BONUS + COMMISSION LOGIC ============
+      const processReferralCredit = async (depositAmount) => {
+        if (!user.referredBy || depositAmount <= 0) return;
+        try {
+          // Referrer को खोजें
+          let referrer = null;
+          if (window.db) {
+            const snap = await window.db.ref('tp_users').once('value');
+            const allDbUsers = snap.val() || {};
+            referrer = Object.values(allDbUsers).find(u => u.referralCode === user.referredBy && !u.isDemo);
+          }
+          if (!referrer) {
+            const localUsers = getUsers();
+            referrer = Object.values(localUsers).find(u => u.referralCode === user.referredBy && !u.isDemo);
+          }
+          if (!referrer) return;
+
+          // 1. अगर यह पहला डिपॉजिट है और >= minRefDeposit है → Tiered Bonus दें
+          const isFirstDeposit = !user.firstDepositDone;
+          const qualifiesForBonus = isFirstDeposit && depositAmount >= minRefDeposit;
+
+          if (qualifiesForBonus) {
+            const currentCount = referrer.referralCount || 0;
+            const nextCount = currentCount + 1;
+            let bonusAmount = referralRewards[nextCount];
+            if (!bonusAmount) {
+              // 10 से ऊपर: 1000 + (n-10)*100
+              bonusAmount = nextCount > 10 ? 1000 + (nextCount - 10) * 100 : 0;
+            }
+            if (bonusAmount > 0) {
+              const historyEntry = {
+                type: 'reward',
+                referralNumber: nextCount,
+                name: user.name,
+                mobile: user.mobile,
+                userId: user.id,
+                depositAmount: depositAmount,
+                amount: bonusAmount,
+                time: new Date().toLocaleString(),
+                ts: Date.now()
+              };
+              // Referrer को bonus दें (referralCount भी बढ़ाएं, pending हटाएं, qualified में जोड़ें)
+              const newPending = (referrer.pendingReferrals || []).filter(p => p.userId !== user.id);
+              const newQualified = [...(referrer.qualifiedReferrals || []), { userId: user.id, name: user.name, mobile: user.mobile, time: new Date().toLocaleString(), ts: Date.now() }].slice(-100);
+              await creditReferrer(referrer.id, bonusAmount, historyEntry, {
+                referralCount: nextCount,
+                pendingReferrals: newPending,
+                qualifiedReferrals: newQualified
+              });
+            }
+          } else if (isFirstDeposit) {
+            // पहला डिपॉजिट लेकिन min से कम → pending में ही रहने दें
+          }
+
+          // 2. हर डिपॉजिट पर 2% कमीशन
+          const commissionAmt = Math.floor(depositAmount * commissionPercent / 100);
+          if (commissionAmt > 0) {
+            const commHistoryEntry = {
+              type: 'commission',
+              fromName: user.name,
+              fromId: user.id,
+              depositAmount: depositAmount,
+              commissionPercent: commissionPercent,
+              amount: commissionAmt,
+              time: new Date().toLocaleString(),
+              ts: Date.now()
+            };
+            await creditReferrer(referrer.id, commissionAmt, commHistoryEntry);
+          }
+        } catch (e) { console.error("processReferralCredit error:", e); }
+      };
 
       const handleDeposit = () => {
         const amt = parseInt(amount);
@@ -1907,17 +2114,18 @@
         const bonusAmt = Math.floor(amt * bonusRate); const totalAmt = amt + bonusAmt;
         setProcessingPayment(true);
         processZapUPIPayment(amt, user, 
-          (orderId) => {
+          async (orderId) => {
             const newTx = { amount: amt, bonus: bonusAmt, time: new Date().toLocaleString(), ts: Date.now(), status: "Success", utr: orderId, desc: `Deposit ₹${amt} + Bonus ₹${bonusAmt}` };
             const newHistory = [...(Array.isArray(user.depositHistory) ? user.depositHistory : []), newTx];
+            const wasFirst = !user.firstDepositDone;
             let updatedData = { depositHistory: newHistory.slice(-20), balance: (user.balance || 0) + totalAmt };
             if (amt >= 100) updatedData.hasDepositedAfter250 = true;
-            if (user.referredBy && amt > 0) {
-              const commissionPercent = config.referralCommissionPercent || 5;
-              const commissionAmt = Math.floor(amt * commissionPercent / 100);
-              if (window.db) { window.db.ref('tp_users').once('value').then(snap => { const allDbUsers = snap.val() || {}; const dbReferrer = Object.values(allDbUsers).find(u => u.referralCode === user.referredBy); if (dbReferrer) { window.db.ref('tp_users/' + dbReferrer.id).update({ balance: (dbReferrer.balance || 0) + commissionAmt, referralEarnings: (dbReferrer.referralEarnings || 0) + commissionAmt }); } }); }
-            }
+            if (wasFirst) updatedData.firstDepositDone = true;
             onUpdate(updatedData);
+            
+            // Referral credit (async, UI block नहीं करेगा)
+            processReferralCredit(amt).catch(e => console.error("Ref credit error:", e));
+            
             setProcessingPayment(false);
           },
           (err) => setProcessingPayment(false)
@@ -1963,7 +2171,6 @@
         onUpdate({ utrRequests: updatedReqs });
         window.showResultMark('success');
         setUtrAmount(''); setUtrInput('');
-        // Force refresh after 1 second to show updated status
         setTimeout(() => { if (onRefreshUser) onRefreshUser(); }, 1000);
       };
       
@@ -1978,6 +2185,10 @@
           React.createElement("div", { className: "bg-green-900/30 border border-green-500/30 rounded-xl p-3 mb-4 text-center" }, 
             React.createElement("div", { className: "text-green-400 text-sm font-bold" }, "🎁 हर डिपॉजिट पर " + bonusPercent + "% बोनस!"),
             React.createElement("div", { className: "text-xs text-gray-400" }, "बोनस सीधे बैलेंस में जुड़ेगा")
+          ),
+          user.referredBy && React.createElement("div", { className: "bg-purple-900/30 border border-purple-500/30 rounded-xl p-3 mb-4 text-center" },
+            React.createElement("div", { className: "text-purple-300 text-xs font-bold" }, "🎯 आपके रेफरर को फायदा होगा!"),
+            React.createElement("div", { className: "text-[10px] text-gray-400" }, "₹" + minRefDeposit + "+ डिपॉजिट करने पर उन्हें बोनस + " + commissionPercent + "% कमीशन मिलेगा")
           ),
           React.createElement("div", { className: "grid grid-cols-3 gap-2" }, quickAmounts.map(a => React.createElement("button", { key: a, onClick: () => setAmount(a.toString()), className: `py-3 rounded-lg text-sm border font-bold ${amount === a.toString() ? 'bg-yellow-500 text-slate-900' : 'bg-slate-800 text-white'}` }, "₹", a))), 
           React.createElement("button", { onClick: handleDeposit, disabled: !amount || processingPayment, className: "w-full py-3 rounded-xl font-bold text-lg btn-deposit btn-3d mt-4 mb-4 disabled:opacity-50" }, processingPayment ? 'प्रोसेसिंग...' : `💰 ₹${amount || 0} + ₹${Math.floor((parseInt(amount) || 0) * bonusRate)} बोनस = ₹${(parseInt(amount) || 0) + Math.floor((parseInt(amount) || 0) * bonusRate)}`), 
@@ -2099,21 +2310,20 @@
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
       }, [user]);
 
-      // Auto-refresh every 20 seconds for balance updates from admin
       useEffect(() => {
         if (!user || !window.db) return;
         const interval = setInterval(() => {
           window.db.ref('tp_users/' + user.id).once('value').then(snap => {
             const fresh = snap.val();
-            if (fresh && (fresh.balance !== user.balance || fresh.withdrawableBalance !== user.withdrawableBalance)) {
+            if (fresh && (fresh.balance !== user.balance || fresh.withdrawableBalance !== user.withdrawableBalance || fresh.referralEarnings !== user.referralEarnings)) {
               localStorage.setItem('tp_logged_in', JSON.stringify(fresh));
               const allUsersLocal = getUsers(); allUsersLocal[fresh.id] = fresh; localStorage.setItem('tp_users', JSON.stringify(allUsersLocal));
               setUser(fresh);
             }
           }).catch(e => {});
-        }, 20000);
+        }, 15000);
         return () => clearInterval(interval);
-      }, [user?.id, user?.balance]);
+      }, [user?.id, user?.balance, user?.referralEarnings]);
 
       const handleSignup = (newUser) => { setUser(newUser); setScreen('dashboard'); if(window.db) window.db.ref('tp_users/' + newUser.id).update({ isOnline: true }); };
       const handleLogout = () => { localStorage.removeItem('tp_logged_in'); if(user && window.db) window.db.ref('tp_users/' + user.id).update({ isOnline: false, isPlaying: false, currentGame: null }); setUser(null); setScreen('login'); };
@@ -2129,7 +2339,6 @@
         });
       }, []);
 
-      // Force refresh user from Firebase
       const forceRefreshUser = useCallback(() => {
         if (!user || !window.db) return;
         window.db.ref('tp_users/' + user.id).once('value').then(snap => {
